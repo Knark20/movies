@@ -583,7 +583,8 @@ def _showtimes_html(showtimes: list[dict], links: dict = {}) -> str:
         groups.setdefault(key, []).append(st["time"])
     rows = []
     for (sort_date, date, cinema), times in sorted(groups.items()):
-        times_str = " · ".join(sorted(set(times)))
+        times = sorted(set(times))[-3:]  # cap at 3, keeping the latest
+        times_str = " · ".join(times)
         date_html = f'<span class="st-date">{date}</span>' if date else ""
         if cinema:
             href = links.get(cinema, "#")
