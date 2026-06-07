@@ -252,7 +252,7 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
     # Strip cinema-specific screening qualifiers before lookup so "Vertigo (4K Restoration)"
     # finds "Vertigo" while "Birdman or (The Unexpected Virtue Of Ignorance)" is left intact.
     lookup = re.sub(
-        r'\s*\([^)]*(?:restoration|remaster(?:ed)?|anniversary|sing.along|'
+        r'\s*\([^)]*(?:restoration|remaster(?:ed)?|anniversary|sing.along|incl\.|'
         r'(?:director|extended|special|theatrical|final)[^)]*(?:cut|edition|version))[^)]*\)\s*$',
         '', title, flags=re.I,
     ).strip() or title
