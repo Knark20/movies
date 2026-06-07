@@ -96,6 +96,7 @@ def _omdb_parse(data: dict, fallback_title: str) -> dict:
         "year":    data.get("Year"),
         "imdb":    float(imdb_raw) if imdb_raw not in (None, "N/A") else None,
         "rt":      int(rt_raw.rstrip("%")) if rt_raw else None,
+        "runtime": int(m.group(1)) if (m := re.match(r"(\d+)", data.get("Runtime") or "")) else None,
         "poster":  data.get("Poster") if data.get("Poster") != "N/A" else None,
         "plot":    data.get("Plot"),
         "imdb_id": data.get("imdbID"),
@@ -136,7 +137,10 @@ def _omdb_search(search_title: str) -> dict:
             if data.get("Response") != "True" or not data.get("Search"):
                 continue
             best = max(data["Search"],
-                       key=lambda r: SequenceMatcher(None, search_title.lower(), r["Title"].lower()).ratio())
+                       key=lambda r: (
+                           SequenceMatcher(None, search_title.lower(), r["Title"].lower()).ratio(),
+                           int(r.get("Year", "0")[:4] or "0"),
+                       ))
             if SequenceMatcher(None, search_title.lower(), best["Title"].lower()).ratio() < 0.6:
                 continue
             data2 = SESSION.get("https://www.omdbapi.com/",
@@ -175,6 +179,16 @@ def _tmdb_fetch(title: str, year: Optional[str] = None) -> dict:
         vote_count = top.get("vote_count", 0)
         if vote_avg and vote_count >= 10:
             out["tmdb_rating"] = round(float(vote_avg), 1)
+        # Fetch IMDb ID via TMDb external_ids endpoint
+        tmdb_id = top.get("id")
+        if tmdb_id:
+            ext = SESSION.get(
+                f"https://api.themoviedb.org/3/movie/{tmdb_id}/external_ids",
+                headers={"Authorization": f"Bearer {TMDB_TOKEN}"},
+                timeout=10,
+            ).json()
+            if ext.get("imdb_id"):
+                out["imdb_id"] = ext["imdb_id"]
         return out
     except Exception:
         return {}
@@ -195,13 +209,26 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
         normalized = _normalize_title(title)
         if normalized != title:
             result = _omdb_fetch(normalized, year)
-    if not result["found"]:
-        result = _omdb_search(_normalize_title(title))
+    if not result["found"] or (result["found"] and result.get("imdb") is None and result.get("rt") is None):
+        search = _omdb_search(_normalize_title(title))
+        if search["found"] and (search.get("imdb") is not None or search.get("rt") is not None):
+            result = search
+        elif not result["found"]:
+            result = search
 
     if result.get("found") and (not result.get("poster") or result.get("imdb") is None):
-        tmdb = _tmdb_fetch(title, year or result.get("year"))
+        tmdb = _tmdb_fetch(title, year)
         if not result.get("poster"):
             result["poster"] = tmdb.get("poster")
+        # If OMDb found no ratings but TMDb has a different IMDb ID, re-fetch from OMDb by that ID
+        if result.get("imdb") is None and tmdb.get("imdb_id") and tmdb["imdb_id"] != result.get("imdb_id"):
+            data = SESSION.get("https://www.omdbapi.com/",
+                               params={"i": tmdb["imdb_id"], "apikey": OMDB_KEY}, timeout=10).json()
+            time.sleep(0.12)
+            if data.get("Response") == "True":
+                result = _omdb_parse(data, title)
+                if not result.get("poster"):
+                    result["poster"] = tmdb.get("poster")
         if result.get("imdb") is None and "tmdb_rating" in tmdb:
             result["tmdb_rating"] = tmdb["tmdb_rating"]
 
@@ -478,6 +505,9 @@ def scrape_eye() -> list[dict]:
 def passes_filter(r: dict) -> bool:
     if not r.get("found"):
         return True
+    runtime = r.get("runtime")
+    if runtime is not None and runtime < 30:
+        return False
     imdb = r.get("imdb") if r.get("imdb") is not None else r.get("tmdb_rating")
     rt   = r.get("rt")
     if imdb is None and rt is None:
@@ -525,14 +555,20 @@ def _card(title: str, r: dict, links: dict, showtimes: list[dict] = None) -> str
         title_html = title
     year_html  = f' <span class="year">({r["year"]})</span>' if r.get("year") else ""
     plot_html  = f'<p class="plot">{r["plot"]}</p>' if r.get("plot") else ""
-    badges_html = (
-        (
-            _badge("IMDb", r["imdb"], IMDB_MIN) if r.get("imdb") is not None
-            else _badge("TMDb", r.get("tmdb_rating"), IMDB_MIN)
-        ) + _badge("RT", r.get("rt"), RT_MIN)
-        if r.get("found")
-        else '<span class="badge gray">not in OMDb</span>'
-    )
+    if r.get("found"):
+        imdb  = r.get("imdb")
+        tmdb  = r.get("tmdb_rating")
+        rt    = r.get("rt")
+        if imdb is not None:
+            badges_html = _badge("IMDb", imdb, IMDB_MIN) + _badge("RT", rt, RT_MIN)
+        elif rt is not None:
+            badges_html = _badge("RT", rt, RT_MIN) + _badge("TMDb", tmdb, IMDB_MIN)
+        elif tmdb is not None:
+            badges_html = _badge("TMDb", tmdb, IMDB_MIN) + _badge("RT", None, RT_MIN)
+        else:
+            badges_html = _badge("IMDb", None, IMDB_MIN) + _badge("RT", None, RT_MIN)
+    else:
+        badges_html = '<span class="badge gray">not in OMDb</span>'
     st_html = _showtimes_html(showtimes or [], links)
     return f"""<div class="card">
   <div class="thumb">{poster_html}</div>
