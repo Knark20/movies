@@ -18,7 +18,6 @@ Usage:
 
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import sys
@@ -205,20 +204,28 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
     if not OMDB_KEY:
         return {"found": False, "imdb": None, "rt": None}
 
-    result = _omdb_fetch(title, year)
+    # Strip cinema-specific screening qualifiers before lookup so "Vertigo (4K Restoration)"
+    # finds "Vertigo" while "Birdman or (The Unexpected Virtue Of Ignorance)" is left intact.
+    lookup = re.sub(
+        r'\s*\([^)]*(?:restoration|remaster(?:ed)?|anniversary|sing.along|'
+        r'(?:director|extended|special|theatrical|final)[^)]*(?:cut|edition|version))[^)]*\)\s*$',
+        '', title, flags=re.I,
+    ).strip() or title
+
+    result = _omdb_fetch(lookup, year)
     if not result["found"]:
-        normalized = _normalize_title(title)
-        if normalized != title:
+        normalized = _normalize_title(lookup)
+        if normalized != lookup:
             result = _omdb_fetch(normalized, year)
     if not result["found"] or (result["found"] and result.get("imdb") is None and result.get("rt") is None):
-        search = _omdb_search(_normalize_title(title))
+        search = _omdb_search(_normalize_title(lookup))
         if search["found"] and (search.get("imdb") is not None or search.get("rt") is not None):
             result = search
         elif not result["found"]:
             result = search
 
     if result.get("found"):
-        tmdb = _tmdb_fetch(title, year)
+        tmdb = _tmdb_fetch(lookup, year)
         if tmdb.get("poster"):
             result["poster"] = tmdb.get("poster")
         elif not result.get("poster"):
@@ -380,74 +387,6 @@ def scrape_schuur() -> list[dict]:
     return [{"title": t, "link": d["link"], "showtimes": d["showtimes"]}
             for t, d in films_map.items()]
 
-
-async def _scrape_pathe_async() -> list[dict]:
-    """
-    Pathé Tuschinski Amsterdam — pathe.nl blocks plain HTTP (403).
-    Playwright renders the React app; we then find links to /film/slug.
-    """
-    from playwright.async_api import async_playwright  # type: ignore[import]
-
-    async with async_playwright() as pw:
-        browser = await pw.chromium.launch(headless=True)
-        ctx = await browser.new_context(
-            user_agent=HEADERS["User-Agent"],
-            locale="nl-NL",
-            ignore_https_errors=True,
-        )
-        page = await ctx.new_page()
-        await page.goto(
-            "https://www.pathe.nl/bioscoop/tuschinski",
-            wait_until="networkidle",
-            timeout=45_000,
-        )
-        # Extra wait for React hydration to complete
-        await page.wait_for_timeout(3000)
-        content = await page.content()
-        await browser.close()
-
-    soup = BeautifulSoup(content, "html.parser")
-
-    all_film_hrefs = [a["href"] for a in soup.find_all("a", href=True) if "film" in a["href"].lower()]
-    if not all_film_hrefs:
-        total_links = len(soup.find_all("a", href=True))
-        print(f"\n  [!] Pathe page did not render film data ({total_links} link(s) found).")
-        print(    "      This usually means the site is temporarily down or blocking headless browsers.")
-        return []
-
-    seen: set[str] = set()
-    films: list[dict] = []
-
-    # Pathé film detail pages: /film/[slug] or /films/[slug]
-    for a in soup.find_all("a", href=True):
-        href: str = a["href"]
-        if not re.search(r"/films?/[^/]+", href):
-            continue
-        title: str = (
-            a.get("data-title")
-            or a.get("aria-label")
-            or ""
-        )
-        if not title:
-            h = a.find(["h1", "h2", "h3", "h4", "span"])
-            title = h.get_text(strip=True) if h else a.get_text(strip=True)
-        title = title.strip()
-        if not title or len(title) < 2 or title in seen:
-            continue
-        seen.add(title)
-        link = href if href.startswith("http") else f"https://www.pathe.nl{href}"
-        films.append({"title": title, "link": link, "showtimes": []})
-    return films
-
-
-def scrape_pathe() -> list[dict]:
-    try:
-        import playwright  # noqa: F401
-    except ImportError:
-        print("  [!] playwright not installed — Pathé Tuschinski skipped.")
-        print("      Fix: pip install playwright && playwright install chromium")
-        return []
-    return asyncio.run(_scrape_pathe_async())
 
 
 _EYE_GRAPHQL_URL = "https://service.eyefilm.nl/graphql"
@@ -856,21 +795,19 @@ details[open] > summary {{ margin-bottom: 0.75rem; }}
 # ── Entry point ─────────────────────────────────────────────────────────────────
 
 CINEMAS: dict = {
-    "Filmkoepel Haarlem":         scrape_filmkoepel,
-    "Filmschuur Haarlem":         scrape_schuur,
-    "Pathé Tuschinski Amsterdam": scrape_pathe,
-    "Eye Filmmuseum Amsterdam":   scrape_eye,
-    "Filmhallen Amsterdam":       scrape_filmhallen,
-    "Lab111 Amsterdam":           scrape_lab111,
+    "Filmkoepel Haarlem":       scrape_filmkoepel,
+    "Filmschuur Haarlem":       scrape_schuur,
+    "Eye Filmmuseum Amsterdam": scrape_eye,
+    "Filmhallen Amsterdam":     scrape_filmhallen,
+    "Lab111 Amsterdam":         scrape_lab111,
 }
 
 CINEMA_SHORT: dict[str, str] = {
-    "Filmkoepel Haarlem":         "Filmkoepel",
-    "Filmschuur Haarlem":         "Filmschuur",
-    "Pathé Tuschinski Amsterdam": "Pathé Tuschinski",
-    "Eye Filmmuseum Amsterdam":   "Eye Filmmuseum",
-    "Filmhallen Amsterdam":       "Filmhallen",
-    "Lab111 Amsterdam":           "Lab111",
+    "Filmkoepel Haarlem":       "Filmkoepel",
+    "Filmschuur Haarlem":       "Filmschuur",
+    "Eye Filmmuseum Amsterdam": "Eye Filmmuseum",
+    "Filmhallen Amsterdam":     "Filmhallen",
+    "Lab111 Amsterdam":         "Lab111",
 }
 
 
