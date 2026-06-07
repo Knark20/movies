@@ -179,8 +179,9 @@ def _tmdb_fetch(title: str, year: Optional[str] = None) -> dict:
         vote_count = top.get("vote_count", 0)
         if vote_avg and vote_count >= 10:
             out["tmdb_rating"] = round(float(vote_avg), 1)
-        # Fetch IMDb ID via TMDb external_ids endpoint
-        tmdb_id = top.get("id")
+        # Fetch IMDb ID when well-known (50+ votes) OR title is a close match
+        title_sim = SequenceMatcher(None, title.lower(), (top.get("title") or "").lower()).ratio()
+        tmdb_id = top.get("id") if (vote_count >= 50 or title_sim >= 0.8) else None
         if tmdb_id:
             ext = SESSION.get(
                 f"https://api.themoviedb.org/3/movie/{tmdb_id}/external_ids",
@@ -216,9 +217,11 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
         elif not result["found"]:
             result = search
 
-    if result.get("found") and (not result.get("poster") or result.get("imdb") is None):
+    if result.get("found"):
         tmdb = _tmdb_fetch(title, year)
-        if not result.get("poster"):
+        if tmdb.get("poster"):
+            result["poster"] = tmdb.get("poster")
+        elif not result.get("poster"):
             result["poster"] = tmdb.get("poster")
         # If OMDb found no ratings but TMDb has a different IMDb ID, re-fetch from OMDb by that ID
         if result.get("imdb") is None and tmdb.get("imdb_id") and tmdb["imdb_id"] != result.get("imdb_id"):
@@ -599,11 +602,18 @@ def generate_html(movies_by_cinema: dict) -> str:
             for st in f.get("showtimes", []):
                 merged[key]["showtimes"].append({**st, "cinema": short})
 
-    EXCLUDED: set[str] = set()
-    merged = {k: d for k, d in merged.items() if k not in EXCLUDED}
+    now_str = datetime.now().strftime("%Y-%m-%dT%H:%M")
+    for d in merged.values():
+        d["showtimes"] = [
+            st for st in d["showtimes"]
+            if f"{st.get('sort_date', '')}T{st.get('time', '')}" >= now_str
+        ]
 
-    good = [(titles[k], d) for k, d in merged.items() if d["r"].get("found") and passes_filter(d["r"])]
-    misc = [(titles[k], d) for k, d in merged.items() if not d["r"].get("found")]
+    EXCLUDED: set[str] = set()
+    merged = {k: d for k, d in merged.items() if k not in EXCLUDED and d["showtimes"]}
+
+    good = [(titles[k], d) for k, d in merged.items() if d["r"].get("found") and d["r"].get("poster") and passes_filter(d["r"])]
+    misc = [(titles[k], d) for k, d in merged.items() if not d["r"].get("found") or not d["r"].get("poster")]
 
     def earliest_showtime(item: tuple) -> str:
         candidates = [
@@ -719,10 +729,9 @@ details[open] > summary {{ margin-bottom: 0.75rem; }}
 <body>
 <header>
   <h1>Now Playing</h1>
-  <p class="meta">Generated {now}&nbsp;&nbsp;·&nbsp;&nbsp;{total} films found</p>
+  <p class="meta">Generated {now}&nbsp;&nbsp;·&nbsp;&nbsp;{good_count} films found</p>
 </header>
 
-<p class="section-label">{good_count} film{"s" if good_count != 1 else ""} matching criteria</p>
 {"<p class='empty'>No films found.</p>" if not good else f'<div class="grid">{cards_html(good)}</div>'}
 
 {misc_section}
