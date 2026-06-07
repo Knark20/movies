@@ -361,29 +361,30 @@ def _filmkoepel_showtimes(film_url: str, film_title: str) -> list[dict]:
 
 def scrape_filmkoepel() -> list[dict]:
     """
-    Filmkoepel Haarlem — homepage: filmkoepel.nl
-    Currently playing films have an <img> inside the <a href="/films/slug/"> tag.
-    Showtimes are read from the JSON-LD on each film's detail page.
+    Filmkoepel Haarlem — filmkoepel.nl
+    Same WordPress koepel theme as Filmhallen: uses the film sitemap to find
+    recently-updated films, then reads ScreeningEvent JSON-LD from each page.
     """
-    resp = SESSION.get("https://www.filmkoepel.nl/", timeout=20)
+    SITEMAP_URL = "https://filmkoepel.nl/fk-feed/film-sitemap-xml"
+    LOOKBACK_DAYS = 30
+
+    resp = SESSION.get(SITEMAP_URL, timeout=15)
     resp.raise_for_status()
-    soup = BeautifulSoup(resp.content, "html.parser")
-    seen: set[str] = set()
+    sitemap_soup = BeautifulSoup(resp.content, "xml")
+
+    cutoff = (datetime.now() - timedelta(days=LOOKBACK_DAYS)).strftime("%Y-%m-%d")
+    film_urls: list[str] = []
+    for url_el in sitemap_soup.find_all("url"):
+        loc = url_el.find("loc")
+        lastmod = url_el.find("lastmod")
+        if loc and lastmod and lastmod.text[:10] >= cutoff:
+            film_urls.append(loc.text)
+
     films: list[dict] = []
-    for a in soup.find_all("a", href=True):
-        href: str = a["href"]
-        if "/films/" not in href:
-            continue
-        if not a.find("img"):
-            continue  # archived entries have no poster image
-        img = a.find("img")
-        title = (img.get("alt") or "").strip() or a.get_text(strip=True)
-        if not title or title in seen:
-            continue
-        seen.add(title)
-        link = href if href.startswith("http") else f"https://www.filmkoepel.nl{href}"
-        showtimes = _filmkoepel_showtimes(link, title)
-        films.append({"title": title, "link": link, "showtimes": showtimes})
+    for film_url in film_urls:
+        result = _filmhallen_film(film_url)
+        if result:
+            films.append(result)
     return films
 
 

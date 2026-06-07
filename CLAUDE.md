@@ -1,6 +1,6 @@
 # Cinema Movie Aggregator
 
-Personal tool that scrapes currently showing films from 6 cinemas in Haarlem/Amsterdam, filters by rating, and outputs a dark-themed HTML page with showtimes.
+Personal tool that scrapes currently showing films from 5 cinemas in Haarlem/Amsterdam, filters by rating, and outputs a dark-themed HTML page with showtimes.
 
 **GitHub:** https://github.com/Knark20/movies
 
@@ -18,7 +18,6 @@ python fetch_movies.py
 
 ```
 pip install -r requirements.txt
-playwright install chromium   # needed for Pathé Tuschinski
 ```
 
 Free OMDb API key: https://www.omdbapi.com/apikey.aspx
@@ -27,9 +26,8 @@ Free OMDb API key: https://www.omdbapi.com/apikey.aspx
 
 | Cinema | URL | Notes |
 |---|---|---|
-| Filmkoepel Haarlem | filmkoepel.nl | Showtimes from JSON-LD `ScreeningEvent` on each film page |
+| Filmkoepel Haarlem | filmkoepel.nl | Film sitemap at `/fk-feed/film-sitemap-xml`; same koepel theme as Filmhallen; 30-day lookback |
 | Filmschuur Haarlem | schuur.nl/agenda/ | DFS state machine over `h3` date → `span` time → `h4` title |
-| Pathé Tuschinski Amsterdam | pathe.nl | Blocks plain HTTP (403) — requires Playwright; site sometimes shows maintenance page |
 | Eye Filmmuseum Amsterdam | eyefilm.nl/en/whats-on | GraphQL API at `service.eyefilm.nl/graphql` — returns all individual screenings with dates/times; filters to `productionType="1"` (films only, excludes events/talks/closures) |
 | Filmhallen Amsterdam | filmhallen.nl | Film sitemap at `/fk-feed/film-sitemap-xml` identifies recently-updated films; each film page has ScreeningEvent JSON-LD; 30-day lookback window |
 | Lab111 Amsterdam | lab111.nl/programma/ | Schedule embedded in page HTML; each film block has `h2.hidemobile` title, `/movie/` page link, and ticket anchors with datetime text "do 18 jun 20:30" |
