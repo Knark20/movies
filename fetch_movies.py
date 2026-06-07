@@ -487,7 +487,7 @@ def _badge(label: str, value, threshold) -> str:
     return f'<span class="badge {cls}">{label} {disp}</span>'
 
 
-def _card(title: str, r: dict, cinemas: list[str], links: dict, showtimes: list[dict] = None) -> str:
+def _card(title: str, r: dict, links: dict, showtimes: list[dict] = None) -> str:
     poster_html = f'<img src="{r["poster"]}" alt="" loading="lazy">' if r.get("poster") else ""
     if r.get("imdb_id"):
         title_html = f'<a href="https://www.imdb.com/title/{r["imdb_id"]}/" target="_blank">{r.get("title", title)}</a>'
@@ -500,10 +500,6 @@ def _card(title: str, r: dict, cinemas: list[str], links: dict, showtimes: list[
         if r.get("found")
         else '<span class="badge gray">not in OMDb</span>'
     )
-    cinema_tags = " ".join(
-        f'<a class="ctag" href="{links.get(c, "#")}" target="_blank">{c}</a>'
-        for c in cinemas
-    )
     st_html = _showtimes_html(showtimes or [], links)
     return f"""<div class="card">
   <div class="thumb">{poster_html}</div>
@@ -512,7 +508,6 @@ def _card(title: str, r: dict, cinemas: list[str], links: dict, showtimes: list[
     <div class="badges">{badges_html}</div>
     {plot_html}
     {st_html}
-    <div class="ctags">{cinema_tags}</div>
   </div>
 </div>"""
 
@@ -550,7 +545,7 @@ def generate_html(movies_by_cinema: dict) -> str:
     misc.sort(key=earliest_showtime)
 
     def cards_html(lst: list) -> str:
-        return "\n".join(_card(t, d["r"], d["cinemas"], d["links"], d.get("showtimes", [])) for t, d in lst)
+        return "\n".join(_card(t, d["r"], d["links"], d.get("showtimes", [])) for t, d in lst)
 
     misc_section = f"""
 <details>
@@ -628,7 +623,6 @@ h3 a:hover {{ text-decoration: underline; }}
 .st-row {{ display: flex; align-items: baseline; gap: 0.5rem; }}
 .st-date {{ color: var(--muted); min-width: 5.5rem; flex-shrink: 0; }}
 .st-times {{ color: var(--text); letter-spacing: 0.02em; }}
-.ctags {{ display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.35rem; }}
 .ctag {{
   font-size: 0.67rem; padding: 2px 7px; border-radius: 4px;
   background: #1e3a5f; color: #93c5fd; text-decoration: none; white-space: nowrap;
