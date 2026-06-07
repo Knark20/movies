@@ -385,6 +385,7 @@ def scrape_filmkoepel() -> list[dict]:
         result = _filmhallen_film(film_url)
         if result:
             films.append(result)
+        time.sleep(0.5)
     return films
 
 
