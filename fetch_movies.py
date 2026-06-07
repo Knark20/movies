@@ -471,7 +471,8 @@ def _showtimes_html(showtimes: list[dict]) -> str:
     for (sort_date, date, cinema), times in sorted(groups.items()):
         times_str = " · ".join(sorted(set(times)))
         date_html = f'<span class="st-date">{date}</span>' if date else ""
-        rows.append(f'<div class="st-row">{date_html}<span class="st-times">{times_str}</span></div>')
+        cinema_html = f'<span class="st-cinema">{cinema}</span>' if cinema else ""
+        rows.append(f'<div class="st-row">{date_html}<span class="st-times">{times_str}</span>{cinema_html}</div>')
     return f'<div class="showtimes">{"".join(rows)}</div>'
 
 
@@ -517,15 +518,16 @@ def generate_html(movies_by_cinema: dict) -> str:
     # Merge films that play in multiple cinemas into one entry
     merged: dict[str, dict] = {}
     for cinema, films in movies_by_cinema.items():
+        short = CINEMA_SHORT.get(cinema, cinema)
         for f in films:
             t = f["title"]
             if t not in merged:
                 merged[t] = {"r": f["ratings"], "cinemas": [], "links": {}, "showtimes": []}
-            if cinema not in merged[t]["cinemas"]:
-                merged[t]["cinemas"].append(cinema)
-            merged[t]["links"][cinema] = f["link"]
+            if short not in merged[t]["cinemas"]:
+                merged[t]["cinemas"].append(short)
+            merged[t]["links"][short] = f["link"]
             for st in f.get("showtimes", []):
-                merged[t]["showtimes"].append({**st, "cinema": cinema})
+                merged[t]["showtimes"].append({**st, "cinema": short})
 
     EXCLUDED: set[str] = set()
     merged = {t: d for t, d in merged.items() if t not in EXCLUDED}
@@ -623,6 +625,7 @@ h3 a:hover {{ text-decoration: underline; }}
 .st-row {{ display: flex; align-items: baseline; gap: 0.5rem; }}
 .st-date {{ color: var(--muted); min-width: 5.5rem; flex-shrink: 0; }}
 .st-times {{ color: var(--text); letter-spacing: 0.02em; }}
+.st-cinema {{ color: var(--gray); font-size: 0.68rem; }}
 .ctags {{ display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.35rem; }}
 .ctag {{
   font-size: 0.67rem; padding: 2px 7px; border-radius: 4px;
@@ -666,6 +669,13 @@ CINEMAS: dict = {
     "Filmschuur Haarlem":         scrape_schuur,
     "Pathé Tuschinski Amsterdam": scrape_pathe,
     "Eye Filmmuseum Amsterdam":   scrape_eye,
+}
+
+CINEMA_SHORT: dict[str, str] = {
+    "Filmkoepel Haarlem":         "Filmkoepel",
+    "Filmschuur Haarlem":         "Filmschuur",
+    "Pathé Tuschinski Amsterdam": "Pathé Tuschinski",
+    "Eye Filmmuseum Amsterdam":   "Eye Filmmuseum",
 }
 
 
