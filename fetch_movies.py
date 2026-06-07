@@ -42,7 +42,8 @@ from bs4 import BeautifulSoup
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ── Configuration ──────────────────────────────────────────────────────────────
-OMDB_KEY   = os.environ.get("OMDB_API_KEY", "")
+OMDB_KEY    = os.environ.get("OMDB_API_KEY", "")
+TMDB_TOKEN  = os.environ.get("TMDB_TOKEN", "")
 IMDB_MIN   = 7.0
 RT_MIN     = 70
 BASE_DIR   = Path(__file__).parent
@@ -67,7 +68,7 @@ SESSION.headers.update(HEADERS)
 
 def load_cache() -> dict:
     if CACHE_FILE.exists():
-        return json.loads(CACHE_FILE.read_text(encoding="utf-8"))
+        return json.loads(CACHE_FILE.read_text(encoding="utf-8-sig"))
     return {}
 
 
@@ -149,6 +150,27 @@ def _omdb_search(search_title: str) -> dict:
     return _NOT_FOUND
 
 
+def _tmdb_poster(title: str, year: Optional[str] = None) -> Optional[str]:
+    if not TMDB_TOKEN:
+        return None
+    try:
+        params: dict = {"query": title, "language": "en-US", "page": 1}
+        if year:
+            params["year"] = year
+        resp = SESSION.get(
+            "https://api.themoviedb.org/3/search/movie",
+            params=params,
+            headers={"Authorization": f"Bearer {TMDB_TOKEN}"},
+            timeout=10,
+        )
+        results = resp.json().get("results", [])
+        if results and results[0].get("poster_path"):
+            return f"https://image.tmdb.org/t/p/w300{results[0]['poster_path']}"
+    except Exception:
+        pass
+    return None
+
+
 def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = None) -> dict:
     """Look up IMDb + RT ratings from OMDb with three fallback levels:
     1. exact title  2. diacritics stripped  3. fuzzy search (handles 'et' vs '&' etc.)"""
@@ -166,6 +188,9 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
             result = _omdb_fetch(normalized, year)
     if not result["found"]:
         result = _omdb_search(_normalize_title(title))
+
+    if result.get("found") and not result.get("poster"):
+        result["poster"] = _tmdb_poster(title, year or result.get("year"))
 
     if cache is not None:
         cache[key] = result
