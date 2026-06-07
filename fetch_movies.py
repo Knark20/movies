@@ -150,9 +150,10 @@ def _omdb_search(search_title: str) -> dict:
     return _NOT_FOUND
 
 
-def _tmdb_poster(title: str, year: Optional[str] = None) -> Optional[str]:
+def _tmdb_fetch(title: str, year: Optional[str] = None) -> dict:
+    """Search TMDb and return poster URL, rating, and vote count for the top result."""
     if not TMDB_TOKEN:
-        return None
+        return {}
     try:
         params: dict = {"query": title, "language": "en-US", "page": 1}
         if year:
@@ -164,11 +165,19 @@ def _tmdb_poster(title: str, year: Optional[str] = None) -> Optional[str]:
             timeout=10,
         )
         results = resp.json().get("results", [])
-        if results and results[0].get("poster_path"):
-            return f"https://image.tmdb.org/t/p/w300{results[0]['poster_path']}"
+        if not results:
+            return {}
+        top = results[0]
+        out: dict = {}
+        if top.get("poster_path"):
+            out["poster"] = f"https://image.tmdb.org/t/p/w300{top['poster_path']}"
+        vote_avg   = top.get("vote_average")
+        vote_count = top.get("vote_count", 0)
+        if vote_avg and vote_count >= 10:
+            out["tmdb_rating"] = round(float(vote_avg), 1)
+        return out
     except Exception:
-        pass
-    return None
+        return {}
 
 
 def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = None) -> dict:
@@ -189,8 +198,12 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
     if not result["found"]:
         result = _omdb_search(_normalize_title(title))
 
-    if result.get("found") and not result.get("poster"):
-        result["poster"] = _tmdb_poster(title, year or result.get("year"))
+    if result.get("found") and (not result.get("poster") or result.get("imdb") is None):
+        tmdb = _tmdb_fetch(title, year or result.get("year"))
+        if not result.get("poster"):
+            result["poster"] = tmdb.get("poster")
+        if result.get("imdb") is None and "tmdb_rating" in tmdb:
+            result["tmdb_rating"] = tmdb["tmdb_rating"]
 
     if cache is not None:
         cache[key] = result
@@ -463,17 +476,9 @@ def scrape_eye() -> list[dict]:
 # ── Filter ─────────────────────────────────────────────────────────────────────
 
 def passes_filter(r: dict) -> bool:
-    """
-    Include if:
-      - not found in OMDb at all (no rating data exists)
-      - found but both IMDb and RT scores are absent
-      - IMDb >= 7.0
-      - RT >= 70%
-    Exclude only when at least one score is present and all scores fall below threshold.
-    """
     if not r.get("found"):
         return True
-    imdb = r.get("imdb")
+    imdb = r.get("imdb") if r.get("imdb") is not None else r.get("tmdb_rating")
     rt   = r.get("rt")
     if imdb is None and rt is None:
         return True
@@ -506,7 +511,7 @@ def _showtimes_html(showtimes: list[dict], links: dict = {}) -> str:
 
 def _badge(label: str, value, threshold) -> str:
     if value is None:
-        return f'<span class="badge gray">{label} —</span>'
+        return f'<span class="badge gray" style="visibility:hidden">{label} —</span>'
     cls = "green" if value >= threshold else "red"
     disp = f"{value:.1f}" if isinstance(value, float) else f"{value}%"
     return f'<span class="badge {cls}">{label} {disp}</span>'
@@ -521,7 +526,10 @@ def _card(title: str, r: dict, links: dict, showtimes: list[dict] = None) -> str
     year_html  = f' <span class="year">({r["year"]})</span>' if r.get("year") else ""
     plot_html  = f'<p class="plot">{r["plot"]}</p>' if r.get("plot") else ""
     badges_html = (
-        _badge("IMDb", r.get("imdb"), IMDB_MIN) + _badge("RT", r.get("rt"), RT_MIN)
+        (
+            _badge("IMDb", r["imdb"], IMDB_MIN) if r.get("imdb") is not None
+            else _badge("TMDb", r.get("tmdb_rating"), IMDB_MIN)
+        ) + _badge("RT", r.get("rt"), RT_MIN)
         if r.get("found")
         else '<span class="badge gray">not in OMDb</span>'
     )
@@ -539,24 +547,27 @@ def _card(title: str, r: dict, links: dict, showtimes: list[dict] = None) -> str
 
 def generate_html(movies_by_cinema: dict) -> str:
     # Merge films that play in multiple cinemas into one entry
-    merged: dict[str, dict] = {}
+    merged: dict[str, dict] = {}  # keyed by title.lower() for case-insensitive dedup
+    titles: dict[str, str] = {}   # key → first-seen display title
     for cinema, films in movies_by_cinema.items():
         short = CINEMA_SHORT.get(cinema, cinema)
         for f in films:
             t = f["title"]
-            if t not in merged:
-                merged[t] = {"r": f["ratings"], "cinemas": [], "links": {}, "showtimes": []}
-            if short not in merged[t]["cinemas"]:
-                merged[t]["cinemas"].append(short)
-            merged[t]["links"][short] = f["link"]
+            key = t.lower()
+            if key not in merged:
+                merged[key] = {"r": f["ratings"], "cinemas": [], "links": {}, "showtimes": []}
+                titles[key] = t
+            if short not in merged[key]["cinemas"]:
+                merged[key]["cinemas"].append(short)
+            merged[key]["links"][short] = f["link"]
             for st in f.get("showtimes", []):
-                merged[t]["showtimes"].append({**st, "cinema": short})
+                merged[key]["showtimes"].append({**st, "cinema": short})
 
     EXCLUDED: set[str] = set()
-    merged = {t: d for t, d in merged.items() if t not in EXCLUDED}
+    merged = {k: d for k, d in merged.items() if k not in EXCLUDED}
 
-    good = [(t, d) for t, d in merged.items() if d["r"].get("found") and passes_filter(d["r"])]
-    misc = [(t, d) for t, d in merged.items() if not d["r"].get("found")]
+    good = [(titles[k], d) for k, d in merged.items() if d["r"].get("found") and passes_filter(d["r"])]
+    misc = [(titles[k], d) for k, d in merged.items() if not d["r"].get("found")]
 
     def earliest_showtime(item: tuple) -> str:
         candidates = [
@@ -672,11 +683,7 @@ details[open] > summary {{ margin-bottom: 0.75rem; }}
 <body>
 <header>
   <h1>Now Playing</h1>
-  <p class="meta">
-    Generated {now}&nbsp;&nbsp;·&nbsp;&nbsp;
-    {total} films found&nbsp;&nbsp;·&nbsp;&nbsp;
-    Criteria: IMDb &ge; {IMDB_MIN} and RT &ge; {RT_MIN}% &nbsp;(unrated or single-rated films always included)
-  </p>
+  <p class="meta">Generated {now}&nbsp;&nbsp;·&nbsp;&nbsp;{total} films found</p>
 </header>
 
 <p class="section-label">{good_count} film{"s" if good_count != 1 else ""} matching criteria</p>
