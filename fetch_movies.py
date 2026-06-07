@@ -459,10 +459,9 @@ def passes_filter(r: dict) -> bool:
 
 # ── HTML generation ─────────────────────────────────────────────────────────────
 
-def _showtimes_html(showtimes: list[dict]) -> str:
+def _showtimes_html(showtimes: list[dict], links: dict = {}) -> str:
     if not showtimes:
         return ""
-    # Group by (date, cinema) → sorted list of times
     groups: dict[tuple, list[str]] = {}
     for st in showtimes:
         key = (st.get("sort_date", ""), st.get("date", ""), st.get("cinema", ""))
@@ -471,7 +470,11 @@ def _showtimes_html(showtimes: list[dict]) -> str:
     for (sort_date, date, cinema), times in sorted(groups.items()):
         times_str = " · ".join(sorted(set(times)))
         date_html = f'<span class="st-date">{date}</span>' if date else ""
-        cinema_html = f'<span class="st-cinema">{cinema}</span>' if cinema else ""
+        if cinema:
+            href = links.get(cinema, "#")
+            cinema_html = f'<a class="ctag" href="{href}" target="_blank">{cinema}</a>'
+        else:
+            cinema_html = ""
         rows.append(f'<div class="st-row">{date_html}<span class="st-times">{times_str}</span>{cinema_html}</div>')
     return f'<div class="showtimes">{"".join(rows)}</div>'
 
@@ -501,7 +504,7 @@ def _card(title: str, r: dict, cinemas: list[str], links: dict, showtimes: list[
         f'<a class="ctag" href="{links.get(c, "#")}" target="_blank">{c}</a>'
         for c in cinemas
     )
-    st_html = _showtimes_html(showtimes or [])
+    st_html = _showtimes_html(showtimes or [], links)
     return f"""<div class="card">
   <div class="thumb">{poster_html}</div>
   <div class="body">
@@ -625,7 +628,6 @@ h3 a:hover {{ text-decoration: underline; }}
 .st-row {{ display: flex; align-items: baseline; gap: 0.5rem; }}
 .st-date {{ color: var(--muted); min-width: 5.5rem; flex-shrink: 0; }}
 .st-times {{ color: var(--text); letter-spacing: 0.02em; }}
-.st-cinema {{ color: var(--gray); font-size: 0.68rem; }}
 .ctags {{ display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.35rem; }}
 .ctag {{
   font-size: 0.67rem; padding: 2px 7px; border-radius: 4px;
