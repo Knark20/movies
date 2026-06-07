@@ -28,8 +28,7 @@ Free OMDb API key: https://www.omdbapi.com/apikey.aspx
 | Filmkoepel Haarlem | filmkoepel.nl | Showtimes from JSON-LD `ScreeningEvent` on each film page |
 | Filmschuur Haarlem | schuur.nl/agenda/ | DFS state machine over `h3` date → `span` time → `h4` title |
 | Pathé Tuschinski Amsterdam | pathe.nl | Blocks plain HTTP (403) — requires Playwright; site sometimes shows maintenance page |
-| Eye Filmmuseum Amsterdam | eyefilm.nl/whats-on | General programme listing; no showtimes |
-| Eye Classics | eyefilm.nl/programma/eye-classics/63587 | Uses internal JSON API at `/api/block/program/auto/63591` — no Playwright needed |
+| Eye Filmmuseum Amsterdam | eyefilm.nl/en/whats-on | GraphQL API at `service.eyefilm.nl/graphql` — returns all individual screenings with dates/times; filters to `productionType="1"` (films only, excludes events/talks/closures) |
 
 ## Filter logic
 
@@ -55,8 +54,7 @@ Ratings are cached in `ratings_cache.json` (gitignored). To force a re-fetch, de
 
 - `IMDB_MIN = 7.0` — IMDb threshold
 - `RT_MIN = 70` — Rotten Tomatoes threshold
-- `EYE_CLASSICS_API` — URL of the Eye Classics internal JSON endpoint
-- `EXCLUDED` (in `generate_html`) — titles always hidden, e.g. `"Eye(s) Open"`
+- `_EYE_GRAPHQL_URL` / `_EYE_GRAPHQL_QUERY` — GraphQL endpoint and query for Eye screenings
 
 ## Output files (all gitignored)
 
