@@ -301,8 +301,8 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
             result["poster"] = tmdb.get("poster")
         elif not result.get("poster"):
             result["poster"] = tmdb.get("poster")
-        # If OMDb found no ratings but TMDb has a different IMDb ID, re-fetch from OMDb by that ID
-        if result.get("imdb") is None and tmdb.get("imdb_id") and tmdb["imdb_id"] != result.get("imdb_id"):
+        # If no IMDb rating yet but TMDb has the IMDb ID, re-fetch from OMDb by that ID
+        if result.get("imdb") is None and OMDB_KEY and tmdb.get("imdb_id"):
             data = SESSION.get("https://www.omdbapi.com/",
                                params={"i": tmdb["imdb_id"], "apikey": OMDB_KEY}, timeout=10).json()
             time.sleep(0.12)
