@@ -174,6 +174,12 @@ def _tmdb_fetch(title: str, year: Optional[str] = None) -> dict:
         out: dict = {}
         if top.get("poster_path"):
             out["poster"] = f"https://image.tmdb.org/t/p/w300{top['poster_path']}"
+        if top.get("title"):
+            out["title"] = top["title"]
+        if top.get("release_date"):
+            out["year"] = top["release_date"][:4]
+        if top.get("overview"):
+            out["plot"] = top["overview"]
         vote_avg   = top.get("vote_average")
         vote_count = top.get("vote_count", 0)
         if vote_avg and vote_count >= 10:
@@ -269,8 +275,28 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
         elif not result["found"]:
             result = search
 
+    # TMDb fallback — when OMDb has nothing, use TMDb rating + metadata as primary source
+    tmdb_already_fetched: Optional[dict] = None
+    if not result["found"] and TMDB_TOKEN:
+        tmdb_already_fetched = _tmdb_fetch(lookup, year)
+        if tmdb_already_fetched.get("tmdb_rating") is not None:
+            result = {
+                "found":       True,
+                "title":       tmdb_already_fetched.get("title") or lookup,
+                "year":        tmdb_already_fetched.get("year") or year,
+                "imdb":        None,
+                "rt":          None,
+                "tmdb_rating": tmdb_already_fetched["tmdb_rating"],
+                "poster":      tmdb_already_fetched.get("poster"),
+                "plot":        tmdb_already_fetched.get("plot"),
+                "imdb_id":     tmdb_already_fetched.get("imdb_id"),
+            }
+            rt = _rt_fetch(result["title"], result.get("year"))
+            if rt.get("rt") is not None:
+                result["rt"] = rt["rt"]
+
     if result.get("found"):
-        tmdb = _tmdb_fetch(lookup, year)
+        tmdb = tmdb_already_fetched if tmdb_already_fetched is not None else _tmdb_fetch(lookup, year)
         if tmdb.get("poster"):
             result["poster"] = tmdb.get("poster")
         elif not result.get("poster"):
@@ -879,7 +905,12 @@ def main() -> None:
             film["ratings"] = get_ratings(film["title"], cache=cache)
             r = film["ratings"]
             if r.get("found"):
-                imdb_s = f"IMDb {r['imdb']:.1f}" if r.get("imdb") else "no IMDb"
+                if r.get("imdb") is not None:
+                    imdb_s = f"IMDb {r['imdb']:.1f}"
+                elif r.get("tmdb_rating") is not None:
+                    imdb_s = f"TMDb {r['tmdb_rating']:.1f}"
+                else:
+                    imdb_s = "no IMDb"
                 rt_s   = f"RT {r['rt']}%"         if r.get("rt")   else "no RT"
                 status = f"  {imdb_s}, {rt_s}"
             else:
