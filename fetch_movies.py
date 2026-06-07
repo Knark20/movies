@@ -24,7 +24,7 @@ import os
 import sys
 import time
 import unicodedata
-from datetime import datetime
+from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Optional
@@ -503,6 +503,77 @@ def scrape_eye() -> list[dict]:
             for t, d in films_map.items()]
 
 
+def _filmhallen_film(film_url: str) -> Optional[dict]:
+    """Fetch one Filmhallen film page; return {title, link, showtimes} or None."""
+    try:
+        resp = SESSION.get(film_url, timeout=15)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.content, "html.parser")
+        # Title from <title>Backrooms - De FilmHallen</title>
+        raw_title = soup.find("title")
+        title = raw_title.get_text(strip=True).split(" - ")[0].strip() if raw_title else ""
+        if not title:
+            return None
+        title_lower = title.lower()
+        showtimes: list[dict] = []
+        for script in soup.find_all("script", type="application/ld+json"):
+            try:
+                data = json.loads(script.string or "")
+            except (json.JSONDecodeError, AttributeError):
+                continue
+            events = data if isinstance(data, list) else data.get("@graph", [data])
+            for ev in events:
+                if ev.get("@type") != "ScreeningEvent":
+                    continue
+                if ev.get("name", "").lower() != title_lower:
+                    continue
+                start = ev.get("startDate", "")
+                if len(start) < 16:
+                    continue
+                dt = datetime.strptime(start[:16], "%Y-%m-%dT%H:%M")
+                date_label = f"{dt.strftime('%a')} {dt.day} {dt.strftime('%b')}"
+                showtimes.append({
+                    "date": date_label,
+                    "time": dt.strftime("%H:%M"),
+                    "sort_date": dt.strftime("%Y-%m-%d"),
+                })
+        if not showtimes:
+            return None
+        return {"title": title, "link": film_url, "showtimes": showtimes}
+    except Exception:
+        return None
+
+
+def scrape_filmhallen() -> list[dict]:
+    """
+    Filmhallen Amsterdam — filmhallen.nl
+    Uses the film sitemap to identify recently-updated films (currently showing),
+    then reads ScreeningEvent JSON-LD from each film page.
+    """
+    SITEMAP_URL = "https://filmhallen.nl/fk-feed/film-sitemap-xml"
+    LOOKBACK_DAYS = 30
+
+    resp = SESSION.get(SITEMAP_URL, timeout=15)
+    resp.raise_for_status()
+    sitemap_soup = BeautifulSoup(resp.content, "xml")
+
+    cutoff = (datetime.now() - timedelta(days=LOOKBACK_DAYS)).strftime("%Y-%m-%d")
+    film_urls: list[str] = []
+    for url_el in sitemap_soup.find_all("url"):
+        loc = url_el.find("loc")
+        lastmod = url_el.find("lastmod")
+        if loc and lastmod and lastmod.text[:10] >= cutoff:
+            film_urls.append(loc.text)
+
+    films: list[dict] = []
+    for film_url in film_urls:
+        result = _filmhallen_film(film_url)
+        if result:
+            films.append(result)
+
+    return films
+
+
 # ── Filter ─────────────────────────────────────────────────────────────────────
 
 def passes_filter(r: dict) -> bool:
@@ -603,10 +674,11 @@ def generate_html(movies_by_cinema: dict) -> str:
                 merged[key]["showtimes"].append({**st, "cinema": short})
 
     now_str = datetime.now().strftime("%Y-%m-%dT%H:%M")
+    cutoff_str = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%dT23:59")
     for d in merged.values():
         d["showtimes"] = [
             st for st in d["showtimes"]
-            if f"{st.get('sort_date', '')}T{st.get('time', '')}" >= now_str
+            if now_str <= f"{st.get('sort_date', '')}T{st.get('time', '')}" <= cutoff_str
         ]
 
     EXCLUDED: set[str] = set()
@@ -746,6 +818,7 @@ CINEMAS: dict = {
     "Filmschuur Haarlem":         scrape_schuur,
     "Pathé Tuschinski Amsterdam": scrape_pathe,
     "Eye Filmmuseum Amsterdam":   scrape_eye,
+    "Filmhallen Amsterdam":       scrape_filmhallen,
 }
 
 CINEMA_SHORT: dict[str, str] = {
@@ -753,6 +826,7 @@ CINEMA_SHORT: dict[str, str] = {
     "Filmschuur Haarlem":         "Filmschuur",
     "Pathé Tuschinski Amsterdam": "Pathé Tuschinski",
     "Eye Filmmuseum Amsterdam":   "Eye Filmmuseum",
+    "Filmhallen Amsterdam":       "Filmhallen",
 }
 
 

@@ -1,6 +1,8 @@
 # Cinema Movie Aggregator
 
-Personal tool that scrapes currently showing films from 4 cinemas in Haarlem/Amsterdam, filters by rating, and outputs a dark-themed HTML page with showtimes.
+Personal tool that scrapes currently showing films from 5 cinemas in Haarlem/Amsterdam, filters by rating, and outputs a dark-themed HTML page with showtimes.
+
+**GitHub:** https://github.com/Knark20/movies
 
 ## Running
 
@@ -29,6 +31,7 @@ Free OMDb API key: https://www.omdbapi.com/apikey.aspx
 | Filmschuur Haarlem | schuur.nl/agenda/ | DFS state machine over `h3` date → `span` time → `h4` title |
 | Pathé Tuschinski Amsterdam | pathe.nl | Blocks plain HTTP (403) — requires Playwright; site sometimes shows maintenance page |
 | Eye Filmmuseum Amsterdam | eyefilm.nl/en/whats-on | GraphQL API at `service.eyefilm.nl/graphql` — returns all individual screenings with dates/times; filters to `productionType="1"` (films only, excludes events/talks/closures) |
+| Filmhallen Amsterdam | filmhallen.nl | Film sitemap at `/fk-feed/film-sitemap-xml` identifies recently-updated films; each film page has ScreeningEvent JSON-LD; 30-day lookback window |
 
 ## Filter logic
 
