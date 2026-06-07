@@ -382,54 +382,57 @@ def scrape_pathe() -> list[dict]:
     return asyncio.run(_scrape_pathe_async())
 
 
+_EYE_GRAPHQL_URL = "https://service.eyefilm.nl/graphql"
+_EYE_GRAPHQL_QUERY = (
+    "query shows($site:String!,$startDateTime:String,$limit:Int,$sort:ShowSortEnum)"
+    "{items:show(site:$site,startDateTime:$startDateTime,limit:$limit,sort:$sort)"
+    "{startDateTime production{url title} relatedProduction{productionType}}}"
+)
+
 def scrape_eye() -> list[dict]:
     """
-    Eye Filmmuseum Amsterdam — eyefilm.nl/whats-on
-    Shows programme items (film series, exhibitions, individual films).
-    All are included; OMDb lookup determines rating status.
+    Eye Filmmuseum Amsterdam — all screenings via the GraphQL API used by eyefilm.nl/en/whats-on.
+    Returns individual films with full showtime data; covers all programmes including Eye Classics.
     """
-    resp = SESSION.get("https://www.eyefilm.nl/whats-on", timeout=20)
+    today = datetime.now().strftime("%Y-%m-%d")
+    resp = SESSION.post(_EYE_GRAPHQL_URL, json={
+        "query": _EYE_GRAPHQL_QUERY,
+        "variables": {
+            "site": "eyeEnglish",
+            "startDateTime": f"> {today} 00:00",
+            "limit": 500,
+            "sort": "DATE",
+        },
+        "operationName": "shows",
+    }, timeout=20)
     resp.raise_for_status()
-    soup = BeautifulSoup(resp.content, "html.parser")
-    seen: set[str] = set()
-    films: list[dict] = []
+    items = resp.json().get("data", {}).get("items", [])
 
-    # Try class-based selection first, fall back to any article/section with a heading
-    candidates = soup.select(".programme-item") or soup.find_all("article")
-    if not candidates:
-        # Broader fallback: any element with a /programma/ link
-        for a in soup.find_all("a", href=True):
-            if "/programma/" not in a["href"]:
-                continue
-            title = a.get_text(strip=True)
-            if not title or title in seen:
-                continue
-            seen.add(title)
-            href = a["href"]
-            link = href if href.startswith("http") else f"https://www.eyefilm.nl{href}"
-            films.append({"title": title, "link": link, "showtimes": []})
-        return films
+    films_map: dict[str, dict] = {}
+    for item in items:
+        if (item.get("relatedProduction") or {}).get("productionType") != "1":
+            continue  # skip events, talks, closures — only include films (type 1)
+        prod = (item.get("production") or [{}])[0]
+        title = prod.get("title", "").strip()
+        if not title:
+            continue
+        url = prod.get("url", "")
+        link = url if url.startswith("http") else f"https://www.eyefilm.nl{url}"
+        start = item.get("startDateTime", "")
+        if not start:
+            continue
+        dt = datetime.fromisoformat(start)
+        date_label = f"{dt.strftime('%a')} {dt.day} {dt.strftime('%b')}"
+        if title not in films_map:
+            films_map[title] = {"link": link, "showtimes": []}
+        films_map[title]["showtimes"].append({
+            "date": date_label,
+            "time": dt.strftime("%H:%M"),
+            "sort_date": dt.strftime("%Y-%m-%d"),
+        })
 
-    for item in candidates:
-        h = item.find(["h2", "h3", "h4"])
-        if not h:
-            continue
-        # Eye headings often contain a category tag (e.g. "Films, Talks & Events")
-        # as the first text node, followed by the actual title — take the last chunk.
-        parts = [s.strip() for s in h.strings if s.strip()]
-        title = parts[-1] if parts else h.get_text(strip=True)
-        if not title or title in seen:
-            continue
-        a = item.find("a", href=True)
-        if not a:
-            continue
-        href = a["href"]
-        if "/programma/" not in href:
-            continue  # skip permanent exhibition and other non-programme links
-        link = href if href.startswith("http") else f"https://www.eyefilm.nl{href}"
-        seen.add(title)
-        films.append({"title": title, "link": link, "showtimes": []})
-    return films
+    return [{"title": t, "link": d["link"], "showtimes": d["showtimes"]}
+            for t, d in films_map.items()]
 
 
 # ── Filter ─────────────────────────────────────────────────────────────────────
@@ -524,7 +527,7 @@ def generate_html(movies_by_cinema: dict) -> str:
             for st in f.get("showtimes", []):
                 merged[t]["showtimes"].append({**st, "cinema": cinema})
 
-    EXCLUDED = {"Eye(s) Open"}
+    EXCLUDED: set[str] = set()
     merged = {t: d for t, d in merged.items() if t not in EXCLUDED}
 
     good = [(t, d) for t, d in merged.items() if d["r"].get("found") and passes_filter(d["r"])]
@@ -656,43 +659,6 @@ details[open] > summary {{ margin-bottom: 0.75rem; }}
 </html>"""
 
 
-EYE_CLASSICS_API = "https://www.eyefilm.nl/api/block/program/auto/63591"
-
-def scrape_eye_classics() -> list[dict]:
-    """
-    Eye Classics programme at Eye Filmmuseum — uses the internal JSON API.
-    byDay groups films by ISO date; each production entry has shows with startDateTime.
-    """
-    resp = SESSION.get(EYE_CLASSICS_API, timeout=20)
-    resp.raise_for_status()
-    data = resp.json()
-
-    films_map: dict[str, dict] = {}
-    for date_key, day_data in data.get("byDay", {}).items():
-        for prod_entry in day_data.get("productions", []):
-            prod = prod_entry.get("production", {})
-            title = prod.get("title", "").strip()
-            if not title:
-                continue
-            url = prod.get("url", "")
-            link = url if url.startswith("http") else f"https://www.eyefilm.nl{url}"
-            if title not in films_map:
-                films_map[title] = {"link": link, "showtimes": []}
-            dt = datetime.strptime(date_key, "%Y-%m-%d")
-            date_label = f"{dt.strftime('%a')} {dt.day} {dt.strftime('%b')}"
-            for show in prod_entry.get("shows", []):
-                time_str = show.get("startDateTime", "")
-                if time_str:
-                    films_map[title]["showtimes"].append({
-                        "date": date_label,
-                        "time": time_str,
-                        "sort_date": date_key,
-                    })
-
-    return [{"title": t, "link": d["link"], "showtimes": d["showtimes"]}
-            for t, d in films_map.items()]
-
-
 # ── Entry point ─────────────────────────────────────────────────────────────────
 
 CINEMAS: dict = {
@@ -700,7 +666,6 @@ CINEMAS: dict = {
     "Filmschuur Haarlem":         scrape_schuur,
     "Pathé Tuschinski Amsterdam": scrape_pathe,
     "Eye Filmmuseum Amsterdam":   scrape_eye,
-    "Eye Classics":               scrape_eye_classics,
 }
 
 
