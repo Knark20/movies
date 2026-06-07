@@ -635,7 +635,7 @@ def _showtimes_html(showtimes: list[dict], links: dict = {}) -> str:
         groups.setdefault(key, []).append(st["time"])
     rows = []
     for (sort_date, date, cinema), times in sorted(groups.items(), key=lambda kv: (kv[0][0], sorted(set(kv[1]))[0])):
-        times = sorted(set(times))[-3:]  # cap at 3, keeping the latest
+        times = sorted(set(times))[-4:]  # cap at 4, keeping the latest
         times_str = " · ".join(times)
         date_html = f'<span class="st-date">{date}</span>' if date else ""
         if cinema:
@@ -812,7 +812,7 @@ h3 a:hover {{ text-decoration: underline; }}
 .showtimes::-webkit-scrollbar-track {{ background: transparent; }}
 .showtimes::-webkit-scrollbar-thumb {{ background: #475569; border-radius: 2px; }}
 .showtimes::-webkit-scrollbar-thumb:hover {{ background: #64748b; }}
-.st-row {{ display: flex; align-items: baseline; gap: 0.2rem; }}
+.st-row {{ display: flex; align-items: baseline; gap: 0; }}
 .st-date {{ color: var(--muted); min-width: 4.5rem; flex-shrink: 0; }}
 .st-times {{ color: var(--text); letter-spacing: 0.02em; }}
 .ctag {{
