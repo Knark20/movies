@@ -194,6 +194,51 @@ def _tmdb_fetch(title: str, year: Optional[str] = None) -> dict:
         return {}
 
 
+def _rt_fetch(title: str, year: Optional[str] = None) -> dict:
+    """Search RT and return Tomatometer score for the best-matching film.
+    Uses the search page which embeds tomatometer-score in the result element."""
+    try:
+        resp = SESSION.get(
+            "https://www.rottentomatoes.com/search",
+            params={"search": title},
+            timeout=10,
+        )
+        soup = BeautifulSoup(resp.content, "html.parser")
+        rows = soup.find_all("search-page-media-row")
+        if not rows:
+            return {}
+        best_row = None
+        best_sim = 0.0
+        best_year_match = False
+        for row in rows:
+            score_str = row.attrs.get("tomatometer-score", "")
+            if not score_str:
+                continue
+            title_link = row.find("a", {"data-qa": "info-name"})
+            row_title = title_link.get_text(strip=True) if title_link else ""
+            if not row_title:
+                img = row.find("img", alt=True)
+                row_title = img["alt"] if img else ""
+            sim = SequenceMatcher(None, title.lower(), row_title.lower()).ratio()
+            if sim < 0.8:
+                continue
+            row_year = row.attrs.get("release-year", "")
+            year_match = bool(year and row_year and row_year[:4] == str(year)[:4])
+            if year_match and not best_year_match:
+                best_row, best_sim, best_year_match = row, sim, True
+            elif year_match == best_year_match and sim > best_sim:
+                best_row, best_sim = row, sim
+        if best_row is None:
+            return {}
+        url_link = best_row.find("a", {"data-qa": "thumbnail-link"})
+        return {
+            "rt": int(best_row.attrs["tomatometer-score"]),
+            "rt_url": url_link["href"] if url_link else "",
+        }
+    except Exception:
+        return {}
+
+
 def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = None) -> dict:
     """Look up IMDb + RT ratings from OMDb with three fallback levels:
     1. exact title  2. diacritics stripped  3. fuzzy search (handles 'et' vs '&' etc.)"""
@@ -241,6 +286,11 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
                     result["poster"] = tmdb.get("poster")
         if result.get("imdb") is None and "tmdb_rating" in tmdb:
             result["tmdb_rating"] = tmdb["tmdb_rating"]
+        # If OMDb has no RT score, try fetching it directly from RT
+        if result.get("rt") is None:
+            rt = _rt_fetch(result.get("title") or lookup, result.get("year"))
+            if rt.get("rt") is not None:
+                result["rt"] = rt["rt"]
 
     if cache is not None:
         cache[key] = result
