@@ -1,0 +1,11 @@
+# Generated output — rebuild by running run.bat
+movies.html
+pathe_debug.html
+
+# Cached ratings — regenerated automatically on next run
+ratings_cache.json
+
+# Runtime / tooling
+__pycache__/
+*.py[cod]
+.claude/
