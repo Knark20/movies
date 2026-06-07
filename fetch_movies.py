@@ -643,7 +643,8 @@ def _showtimes_html(showtimes: list[dict], links: dict = {}) -> str:
             cinema_html = f'<a class="ctag" href="{href}" target="_blank">{cinema}</a>'
         else:
             cinema_html = ""
-        rows.append(f'<div class="st-row">{date_html}<span class="st-times">{times_str}</span>{cinema_html}</div>')
+        cinema_attr = f' data-cinema="{cinema}"' if cinema else ""
+        rows.append(f'<div class="st-row"{cinema_attr}>{date_html}<span class="st-times">{times_str}</span>{cinema_html}</div>')
     return f'<div class="showtimes">{"".join(rows)}</div>'
 
 
@@ -741,6 +742,10 @@ def generate_html(movies_by_cinema: dict) -> str:
   <div class="grid">{cards_html(misc)}</div>
 </details>""" if misc else ""
 
+    all_cinemas = sorted({st["cinema"] for d in merged.values() for st in d["showtimes"] if st.get("cinema")})
+    filter_btns = "".join(f'<button class="cf-btn active" data-cinema="{c}">{c}</button>' for c in all_cinemas)
+    filter_html = f'<div class="cinema-filters">{filter_btns}</div>' if len(all_cinemas) > 1 else ""
+
     now   = datetime.now().strftime("%d %b %Y, %H:%M")
     total = len(merged)
     good_count = len(good)
@@ -830,17 +835,59 @@ details[open] summary::before {{ content: "▼  "; }}
 summary:hover {{ color: var(--text); }}
 details[open] > summary {{ margin-bottom: 0.75rem; }}
 .empty {{ color: var(--muted); font-style: italic; font-size: 0.9rem; }}
+.cinema-filters {{ display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }}
+.cf-btn {{
+  font-size: 0.75rem; padding: 4px 12px; border-radius: 999px;
+  border: 1px solid #334155; background: transparent; color: var(--muted);
+  cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+}}
+.cf-btn.active {{ background: #1e3a5f; color: #93c5fd; border-color: #1d4ed8; }}
+.cf-btn:hover {{ border-color: var(--accent); color: var(--text); }}
 </style>
 </head>
 <body>
 <header>
   <h1>Now Playing</h1>
-  <p class="meta">Generated {now}&nbsp;&nbsp;·&nbsp;&nbsp;{good_count} films found</p>
+  <p class="meta">Generated {now}&nbsp;&nbsp;·&nbsp;&nbsp;<span id="film-count">{good_count}</span> films found</p>
 </header>
 
+{filter_html}
 {"<p class='empty'>No films found.</p>" if not good else f'<div class="grid">{cards_html(good)}</div>'}
 
 {misc_section}
+<script>
+(function(){{
+  const btns = document.querySelectorAll('.cf-btn');
+  if (!btns.length) return;
+  btns.forEach(btn => btn.addEventListener('click', function(){{
+    this.classList.toggle('active');
+    filter();
+  }}));
+  function filter(){{
+    const active = new Set([...btns].filter(b => b.classList.contains('active')).map(b => b.dataset.cinema));
+    const all = active.size === btns.length;
+    document.querySelectorAll('.st-row[data-cinema]').forEach(row => {{
+      row.style.display = all || active.has(row.dataset.cinema) ? '' : 'none';
+    }});
+    document.querySelectorAll('.card').forEach(card => {{
+      const rows = card.querySelectorAll('.st-row[data-cinema]');
+      if (!rows.length) return;
+      card.style.display = [...rows].some(r => r.style.display !== 'none') ? '' : 'none';
+    }});
+    const det = document.querySelector('details');
+    if (det) {{
+      const any = [...det.querySelectorAll('.card')].some(c => c.style.display !== 'none');
+      det.style.display = any ? '' : 'none';
+    }}
+    const grid = document.querySelector('.grid');
+    if (grid) {{
+      const visible = [...grid.querySelectorAll('.card')].filter(c => c.style.display !== 'none').length;
+      const el = document.getElementById('film-count');
+      if (el) el.textContent = visible;
+    }}
+  }}
+}})();
+</script>
 </body>
 </html>"""
 
@@ -848,10 +895,10 @@ details[open] > summary {{ margin-bottom: 0.75rem; }}
 # ── Entry point ─────────────────────────────────────────────────────────────────
 
 CINEMAS: dict = {
-    "Filmkoepel Haarlem":       scrape_filmkoepel,
+    # "Filmkoepel Haarlem":       scrape_filmkoepel,   # blocked from this network
     "Filmschuur Haarlem":       scrape_schuur,
     "Eye Filmmuseum Amsterdam": scrape_eye,
-    "Filmhallen Amsterdam":     scrape_filmhallen,
+    # "Filmhallen Amsterdam":     scrape_filmhallen,   # blocked from this network
     "Lab111 Amsterdam":         scrape_lab111,
 }
 
