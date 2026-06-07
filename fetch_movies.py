@@ -23,7 +23,7 @@ import os
 import sys
 import time
 import unicodedata
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Optional
@@ -325,68 +325,81 @@ def _parse_nl_date(date_str: str) -> tuple[str, str]:
         return date_str, ""
     return f"{day_en} {day_num} {mon_en}", sort_date
 
-def _filmkoepel_showtimes(film_url: str, film_title: str) -> list[dict]:
-    """Parse ScreeningEvent JSON-LD from a Filmkoepel film page.
-    Filters by film name to avoid picking up other films' showtimes on the same page."""
-    try:
-        resp = SESSION.get(film_url, timeout=20)
+_CINEVILLE_API        = "https://api.cineville.nl"
+_FILMHALLEN_VENUE_ID  = "500f04ec-a10e-4f92-a8e6-d7f98b3b2d51"
+_FILMKOEPEL_VENUE_ID  = "f030b2cb-60d6-45ae-b1e0-719ed1c104f1"
+
+
+def _scrape_cineville_venue(venue_id: str, films_base_url: str) -> list[dict]:
+    """Fetch upcoming films at a Cineville partner venue via api.cineville.nl."""
+    now = datetime.now(timezone.utc)
+    end = now + timedelta(days=7)
+    params = {
+        "venueId[eq]": venue_id,
+        "startDate[gte]": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "startDate[lte]": end.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "page[limit]": 200,
+    }
+    resp = SESSION.get(f"{_CINEVILLE_API}/events", params=params, timeout=15)
+    resp.raise_for_status()
+    data = resp.json()
+    all_events: list[dict] = list(data["_embedded"]["events"])
+
+    # Paginate if needed
+    while data.get("_links", {}).get("next"):
+        m = re.search(r'page\[after\]=([^&]+)', data["_links"]["next"]["href"])
+        if not m:
+            break
+        resp = SESSION.get(f"{_CINEVILLE_API}/events", params={**params, "page[after]": m.group(1)}, timeout=15)
         resp.raise_for_status()
-        soup = BeautifulSoup(resp.content, "html.parser")
-        showtimes = []
-        title_lower = film_title.lower()
-        for script in soup.find_all("script", type="application/ld+json"):
-            try:
-                data = json.loads(script.string or "")
-            except (json.JSONDecodeError, AttributeError):
+        data = resp.json()
+        all_events.extend(data["_embedded"]["events"])
+
+    # Group events by production, skip hidden and non-film
+    prod_groups: dict[str, list[dict]] = {}
+    for ev in all_events:
+        if ev.get("productionTypeId") != "film" or ev.get("isHidden"):
+            continue
+        prod_groups.setdefault(ev["productionId"], []).append(ev)
+
+    films: list[dict] = []
+    for prod_id, evs in prod_groups.items():
+        try:
+            pr = SESSION.get(f"{_CINEVILLE_API}/productions/{prod_id}", timeout=10)
+            if pr.status_code != 200:
                 continue
-            events = data if isinstance(data, list) else data.get("@graph", [data])
-            for ev in events:
-                if ev.get("@type") != "ScreeningEvent":
-                    continue
-                # Only include screenings for this film
-                ev_name = ev.get("name", "").lower()
-                if ev_name and ev_name != title_lower:
-                    continue
-                start = ev.get("startDate", "")
-                if len(start) < 16:
-                    continue
-                # "2026-06-07T11:00+02:00" → date="za 7 jun", time="11:00"
-                dt = datetime.strptime(start[:16], "%Y-%m-%dT%H:%M")
-                date_label = f"{dt.strftime('%a')} {dt.day} {dt.strftime('%b')}"
-                showtimes.append({"date": date_label, "time": start[11:16], "sort_date": dt.strftime("%Y-%m-%d")})
-        return showtimes
-    except Exception:
-        return []
+            prod = pr.json()
+        except Exception:
+            continue
+        title = prod.get("title", "").strip()
+        slug  = prod.get("slug",  "").strip()
+        if not title:
+            continue
+        link = f"{films_base_url}/{slug}/" if slug else films_base_url
+        showtimes: list[dict] = []
+        for ev in evs:
+            start = ev.get("startDate", "")
+            if not start:
+                continue
+            try:
+                dt_utc = datetime.strptime(start[:16], "%Y-%m-%dT%H:%M")
+                offset = 2 if 4 <= dt_utc.month <= 10 else 1  # CEST/CET
+                dt = dt_utc + timedelta(hours=offset)
+                showtimes.append({
+                    "date":      f"{dt.strftime('%a')} {dt.day} {dt.strftime('%b')}",
+                    "time":      dt.strftime("%H:%M"),
+                    "sort_date": dt.strftime("%Y-%m-%d"),
+                })
+            except ValueError:
+                continue
+        if showtimes:
+            films.append({"title": title, "link": link, "showtimes": showtimes})
+    return films
 
 
 def scrape_filmkoepel() -> list[dict]:
-    """
-    Filmkoepel Haarlem — filmkoepel.nl
-    Same WordPress koepel theme as Filmhallen: uses the film sitemap to find
-    recently-updated films, then reads ScreeningEvent JSON-LD from each page.
-    """
-    SITEMAP_URL = "https://filmkoepel.nl/fk-feed/film-sitemap-xml"
-    LOOKBACK_DAYS = 30
-
-    resp = SESSION.get(SITEMAP_URL, timeout=15)
-    resp.raise_for_status()
-    sitemap_soup = BeautifulSoup(resp.content, "xml")
-
-    cutoff = (datetime.now() - timedelta(days=LOOKBACK_DAYS)).strftime("%Y-%m-%d")
-    film_urls: list[str] = []
-    for url_el in sitemap_soup.find_all("url"):
-        loc = url_el.find("loc")
-        lastmod = url_el.find("lastmod")
-        if loc and lastmod and lastmod.text[:10] >= cutoff:
-            film_urls.append(loc.text)
-
-    films: list[dict] = []
-    for film_url in film_urls:
-        result = _filmhallen_film(film_url)
-        if result:
-            films.append(result)
-        time.sleep(0.5)
-    return films
+    """Filmkoepel Haarlem — via Cineville API (api.cineville.nl)."""
+    return _scrape_cineville_venue(_FILMKOEPEL_VENUE_ID, "https://filmkoepel.nl/films")
 
 
 def scrape_schuur() -> list[dict]:
@@ -494,47 +507,6 @@ def scrape_eye() -> list[dict]:
             for t, d in films_map.items()]
 
 
-def _filmhallen_film(film_url: str) -> Optional[dict]:
-    """Fetch one Filmhallen film page; return {title, link, showtimes} or None."""
-    try:
-        resp = SESSION.get(film_url, timeout=15)
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.content, "html.parser")
-        # Title from <title>Backrooms - De FilmHallen</title>
-        raw_title = soup.find("title")
-        title = raw_title.get_text(strip=True).split(" - ")[0].strip() if raw_title else ""
-        if not title:
-            return None
-        title_lower = title.lower()
-        showtimes: list[dict] = []
-        for script in soup.find_all("script", type="application/ld+json"):
-            try:
-                data = json.loads(script.string or "")
-            except (json.JSONDecodeError, AttributeError):
-                continue
-            events = data if isinstance(data, list) else data.get("@graph", [data])
-            for ev in events:
-                if ev.get("@type") != "ScreeningEvent":
-                    continue
-                if ev.get("name", "").lower() != title_lower:
-                    continue
-                start = ev.get("startDate", "")
-                if len(start) < 16:
-                    continue
-                dt = datetime.strptime(start[:16], "%Y-%m-%dT%H:%M")
-                date_label = f"{dt.strftime('%a')} {dt.day} {dt.strftime('%b')}"
-                showtimes.append({
-                    "date": date_label,
-                    "time": dt.strftime("%H:%M"),
-                    "sort_date": dt.strftime("%Y-%m-%d"),
-                })
-        if not showtimes:
-            return None
-        return {"title": title, "link": film_url, "showtimes": showtimes}
-    except Exception:
-        return None
-
-
 def scrape_lab111() -> list[dict]:
     """
     Lab111 Amsterdam — programma: lab111.nl/programma/
@@ -578,33 +550,8 @@ def scrape_lab111() -> list[dict]:
 
 
 def scrape_filmhallen() -> list[dict]:
-    """
-    Filmhallen Amsterdam — filmhallen.nl
-    Uses the film sitemap to identify recently-updated films (currently showing),
-    then reads ScreeningEvent JSON-LD from each film page.
-    """
-    SITEMAP_URL = "https://filmhallen.nl/fk-feed/film-sitemap-xml"
-    LOOKBACK_DAYS = 30
-
-    resp = SESSION.get(SITEMAP_URL, timeout=15)
-    resp.raise_for_status()
-    sitemap_soup = BeautifulSoup(resp.content, "xml")
-
-    cutoff = (datetime.now() - timedelta(days=LOOKBACK_DAYS)).strftime("%Y-%m-%d")
-    film_urls: list[str] = []
-    for url_el in sitemap_soup.find_all("url"):
-        loc = url_el.find("loc")
-        lastmod = url_el.find("lastmod")
-        if loc and lastmod and lastmod.text[:10] >= cutoff:
-            film_urls.append(loc.text)
-
-    films: list[dict] = []
-    for film_url in film_urls:
-        result = _filmhallen_film(film_url)
-        if result:
-            films.append(result)
-
-    return films
+    """Filmhallen Amsterdam — via Cineville API (api.cineville.nl)."""
+    return _scrape_cineville_venue(_FILMHALLEN_VENUE_ID, "https://filmhallen.nl/films")
 
 
 # ── Filter ─────────────────────────────────────────────────────────────────────
@@ -895,10 +842,10 @@ details[open] > summary {{ margin-bottom: 0.75rem; }}
 # ── Entry point ─────────────────────────────────────────────────────────────────
 
 CINEMAS: dict = {
-    # "Filmkoepel Haarlem":       scrape_filmkoepel,   # blocked from this network
+    "Filmkoepel Haarlem":       scrape_filmkoepel,
     "Filmschuur Haarlem":       scrape_schuur,
     "Eye Filmmuseum Amsterdam": scrape_eye,
-    # "Filmhallen Amsterdam":     scrape_filmhallen,   # blocked from this network
+    "Filmhallen Amsterdam":     scrape_filmhallen,
     "Lab111 Amsterdam":         scrape_lab111,
 }
 
