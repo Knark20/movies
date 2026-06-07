@@ -619,7 +619,11 @@ h3 a:hover {{ text-decoration: underline; }}
   font-size: 0.78rem; color: var(--muted); line-height: 1.45;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }}
-.showtimes {{ font-size: 0.72rem; display: flex; flex-direction: column; gap: 0.15rem; margin-top: 0.3rem; }}
+.showtimes {{ font-size: 0.72rem; display: flex; flex-direction: column; gap: 0.15rem; margin-top: 0.3rem; max-height: 7rem; overflow-y: auto; padding-right: 0.25rem; scrollbar-width: thin; scrollbar-color: #475569 transparent; }}
+.showtimes::-webkit-scrollbar {{ width: 4px; }}
+.showtimes::-webkit-scrollbar-track {{ background: transparent; }}
+.showtimes::-webkit-scrollbar-thumb {{ background: #475569; border-radius: 2px; }}
+.showtimes::-webkit-scrollbar-thumb:hover {{ background: #64748b; }}
 .st-row {{ display: flex; align-items: baseline; gap: 0.5rem; }}
 .st-date {{ color: var(--muted); min-width: 5.5rem; flex-shrink: 0; }}
 .st-times {{ color: var(--text); letter-spacing: 0.02em; }}
