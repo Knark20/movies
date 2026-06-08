@@ -1,0 +1,45 @@
+name: Generate movies page
+
+on:
+  schedule:
+    - cron: '0 5 * * *'  # 07:00 Amsterdam (CEST = UTC+2)
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore ratings cache
+        uses: actions/cache@v4
+        with:
+          path: ratings_cache.json
+          key: ratings-cache-${{ github.run_id }}
+          restore-keys: ratings-cache-
+
+      - name: Generate movies.html
+        env:
+          OMDB_API_KEY: ${{ secrets.OMDB_API_KEY }}
+          TMDB_TOKEN: ${{ secrets.TMDB_TOKEN }}
+        run: python fetch_movies.py
+
+      - name: Prepare site
+        run: |
+          mkdir _site
+          cp movies.html _site/index.html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: _site
+          publish_branch: gh-pages
