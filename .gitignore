@@ -11,4 +11,4 @@ __pycache__/
 .claude/
 
 # Contains API keys — do not commit
-run.bat
+keys.bat
