@@ -80,7 +80,25 @@ def _normalize_title(title: str) -> str:
     return unicodedata.normalize("NFKD", title).encode("ascii", "ignore").decode("ascii").strip()
 
 
+_QUALIFIER_RE = re.compile(
+    r'\s*\([^)]*(?:restoration|remaster(?:ed)?|anniversary|sing.along|re-release|incl\.|'
+    r'(?:director|extended|special|theatrical|final)[^)]*(?:cut|edition|version))[^)]*\)\s*$',
+    re.I,
+)
+
+def _strip_qualifiers(title: str) -> str:
+    return _QUALIFIER_RE.sub('', title).strip() or title
+
+
 _NOT_FOUND: dict = {"found": False, "imdb": None, "rt": None}
+
+_ENGLISH_COUNTRIES = {"usa", "uk", "united states", "united kingdom", "australia", "canada", "ireland", "new zealand"}
+_CJK_RE = re.compile(r'[⺀-鿿豈-﫿가-힣؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]')
+
+def _is_english_only(country: str) -> bool:
+    if not country:
+        return True
+    return {c.strip().lower() for c in country.split(",")}.issubset(_ENGLISH_COUNTRIES)
 
 
 def _omdb_parse(data: dict, fallback_title: str) -> dict:
@@ -99,6 +117,7 @@ def _omdb_parse(data: dict, fallback_title: str) -> dict:
         "poster":  data.get("Poster") if data.get("Poster") != "N/A" else None,
         "plot":    data.get("Plot"),
         "imdb_id": data.get("imdbID"),
+        "country": data.get("Country"),
     }
 
 
@@ -176,6 +195,8 @@ def _tmdb_fetch(title: str, year: Optional[str] = None) -> dict:
             out["poster"] = f"https://image.tmdb.org/t/p/w300{top['poster_path']}"
         if top.get("title"):
             out["title"] = top["title"]
+        if top.get("original_title") and top.get("original_title") != top.get("title"):
+            out["original_title"] = top["original_title"]
         if top.get("release_date"):
             out["year"] = top["release_date"][:4]
         if top.get("overview"):
@@ -250,18 +271,15 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
     1. exact title  2. diacritics stripped  3. fuzzy search (handles 'et' vs '&' etc.)"""
     key = f"{title}|||{year or ''}"
     if cache is not None and key in cache:
-        return cache[key]
+        cached = cache[key]
+        # Re-fetch if found but missing country (needed for dual-title display)
+        if not cached.get("found") or "country" in cached:
+            return cached
 
     if not OMDB_KEY:
         return {"found": False, "imdb": None, "rt": None}
 
-    # Strip cinema-specific screening qualifiers before lookup so "Vertigo (4K Restoration)"
-    # finds "Vertigo" while "Birdman or (The Unexpected Virtue Of Ignorance)" is left intact.
-    lookup = re.sub(
-        r'\s*\([^)]*(?:restoration|remaster(?:ed)?|anniversary|sing.along|re-release|incl\.|'
-        r'(?:director|extended|special|theatrical|final)[^)]*(?:cut|edition|version))[^)]*\)\s*$',
-        '', title, flags=re.I,
-    ).strip() or title
+    lookup = _strip_qualifiers(title)
 
     result = _omdb_fetch(lookup, year)
     if not result["found"]:
@@ -312,6 +330,8 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
                     result["poster"] = tmdb.get("poster")
         if result.get("imdb") is None and "tmdb_rating" in tmdb:
             result["tmdb_rating"] = tmdb["tmdb_rating"]
+        if tmdb.get("original_title") and not result.get("original_title"):
+            result["original_title"] = tmdb["original_title"]
         # If OMDb has no RT score, try fetching it directly from RT
         if result.get("rt") is None:
             rt = _rt_fetch(result.get("title") or lookup, result.get("year"))
@@ -631,11 +651,22 @@ def _badge(label: str, value, threshold) -> str:
 
 def _card(title: str, r: dict, links: dict, showtimes: list[dict] = None) -> str:
     poster_html = f'<img src="{r["poster"]}" alt="" loading="lazy">' if r.get("poster") else ""
+    en_title = r.get("title", title) if r.get("found") else title
+    orig_title = r.get("original_title") or ""
+    show_en_sub = (
+        r.get("found")
+        and not _is_english_only(r.get("country", ""))
+        and orig_title
+        and orig_title.lower().strip() != en_title.lower().strip()
+        and not _CJK_RE.search(orig_title)
+    )
+    main_title = orig_title if show_en_sub else en_title
     if r.get("imdb_id"):
-        title_html = f'<a href="https://www.imdb.com/title/{r["imdb_id"]}/" target="_blank">{r.get("title", title)}</a>'
+        title_html = f'<a href="https://www.imdb.com/title/{r["imdb_id"]}/" target="_blank">{main_title}</a>'
     else:
-        title_html = title
+        title_html = main_title
     year_html  = f' <span class="year">({r["year"]})</span>' if r.get("year") else ""
+    en_sub_html = f'<span class="en-title">{en_title}</span>' if show_en_sub else ""
     plot_html  = f'<p class="plot">{r["plot"]}</p>' if r.get("plot") else ""
     if r.get("found"):
         imdb  = r.get("imdb")
@@ -655,7 +686,7 @@ def _card(title: str, r: dict, links: dict, showtimes: list[dict] = None) -> str
     return f"""<div class="card">
   <div class="thumb">{poster_html}</div>
   <div class="body">
-    <h3>{title_html}{year_html}</h3>
+    <h3>{title_html}{year_html}{en_sub_html}</h3>
     <div class="badges">{badges_html}</div>
     {plot_html}
     {st_html}
@@ -671,15 +702,33 @@ def generate_html(movies_by_cinema: dict) -> str:
         short = CINEMA_SHORT.get(cinema, cinema)
         for f in films:
             t = f["title"]
-            key = t.lower()
+            key = _strip_qualifiers(t).lower()
             if key not in merged:
                 merged[key] = {"r": f["ratings"], "cinemas": [], "links": {}, "showtimes": []}
-                titles[key] = t
+                titles[key] = _strip_qualifiers(t)
             if short not in merged[key]["cinemas"]:
                 merged[key]["cinemas"].append(short)
             merged[key]["links"][short] = f["link"]
             for st in f.get("showtimes", []):
                 merged[key]["showtimes"].append({**st, "cinema": short})
+
+    # Second pass: merge entries that resolved to the same IMDb ID under different titles
+    imdb_to_key: dict[str, str] = {}
+    for key, d in list(merged.items()):
+        imdb_id = d["r"].get("imdb_id")
+        if not imdb_id:
+            continue
+        if imdb_id in imdb_to_key:
+            primary = imdb_to_key[imdb_id]
+            for c in d["cinemas"]:
+                if c not in merged[primary]["cinemas"]:
+                    merged[primary]["cinemas"].append(c)
+            merged[primary]["links"].update(d["links"])
+            merged[primary]["showtimes"].extend(d["showtimes"])
+            del merged[key]
+            del titles[key]
+        else:
+            imdb_to_key[imdb_id] = key
 
     now_str = datetime.now().strftime("%Y-%m-%dT%H:%M")
     cutoff_str = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%dT23:59")
@@ -770,6 +819,7 @@ h1 {{ font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }}
   display: flex; flex-direction: column; gap: 0.4rem; flex: 1; min-width: 0;
 }}
 h3 {{ font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+.en-title {{ display: block; font-size: 0.75rem; color: var(--muted); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }}
 h3 a {{ color: var(--accent); text-decoration: none; }}
 h3 a:hover {{ text-decoration: underline; }}
 .year {{ color: var(--muted); font-weight: 400; font-size: 0.85rem; }}
