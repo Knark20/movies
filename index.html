@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Now Playing — 08 Jun 2026, 21:19</title>
+<style>
+:root {
+  --bg: #0f172a; --surface: #1e293b; --accent: #60a5fa;
+  --green: #4ade80; --red: #f87171; --gray: #64748b;
+  --text: #f1f5f9; --muted: #94a3b8;
+  --green-bg: #052e16; --red-bg: #450a0a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg); color: var(--text);
+  padding: 2rem 1.5rem; max-width: 1280px; margin: 0 auto;
+}
+header { margin-bottom: 2rem; border-bottom: 1px solid #1e293b; padding-bottom: 1.5rem; }
+h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }
+.meta { color: var(--muted); font-size: 0.85rem; margin-top: 0.4rem; }
+.section-label {
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--muted); margin: 1.5rem 0 0.75rem;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 0.85rem;
+}
+.card {
+  background: var(--surface); border-radius: 10px;
+  display: flex; overflow: hidden;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.card:hover {
+  box-shadow: 0 0 0 1px var(--accent);
+  transform: translateY(-1px);
+}
+.thumb { width: 80px; min-width: 80px; background: #111827; }
+.thumb img { width: 80px; height: 120px; object-fit: cover; display: block; }
+.body {
+  padding: 0.8rem 0.9rem;
+  display: flex; flex-direction: column; gap: 0.4rem; flex: 1; min-width: 0;
+}
+h3 { font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.en-title { display: block; font-size: 0.75rem; color: var(--muted); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+h3 a { color: var(--accent); text-decoration: none; }
+h3 a:hover { text-decoration: underline; }
+.year { color: var(--muted); font-weight: 400; font-size: 0.85rem; }
+.badges { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+.badge {
+  font-size: 0.68rem; padding: 2px 8px; border-radius: 999px;
+  font-weight: 700; white-space: nowrap;
+}
+.badge.green { background: var(--green-bg); color: var(--green); }
+.badge.red   { background: var(--red-bg);   color: var(--red); }
+.badge.gray  { background: var(--surface);  color: var(--gray); border: 1px solid #334155; }
+.plot {
+  font-size: 0.78rem; color: var(--muted); line-height: 1.45;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.showtimes { font-size: 0.72rem; display: flex; flex-direction: column; gap: 0.15rem; margin-top: 0.3rem; max-height: 7rem; overflow-y: auto; padding-right: 0.25rem; scrollbar-width: thin; scrollbar-color: #475569 transparent; }
+.showtimes::-webkit-scrollbar { width: 4px; }
+.showtimes::-webkit-scrollbar-track { background: transparent; }
+.showtimes::-webkit-scrollbar-thumb { background: #475569; border-radius: 2px; }
+.showtimes::-webkit-scrollbar-thumb:hover { background: #64748b; }
+.st-row { display: flex; align-items: baseline; gap: 0; }
+.st-date { color: var(--muted); min-width: 4.5rem; flex-shrink: 0; }
+.st-times { color: var(--text); letter-spacing: 0.02em; }
+.ctag {
+  font-size: 0.67rem; padding: 2px 7px; border-radius: 4px;
+  background: #1e3a5f; color: #93c5fd; text-decoration: none; white-space: nowrap;
+}
+.ctag:hover { background: #1d4ed8; color: #fff; }
+details { margin-top: 2.5rem; }
+summary {
+  cursor: pointer; color: var(--muted); font-size: 0.85rem;
+  padding: 0.5rem 0; user-select: none; list-style: none;
+}
+summary::before { content: "▶  "; font-size: 0.7rem; }
+details[open] summary::before { content: "▼  "; }
+summary:hover { color: var(--text); }
+details[open] > summary { margin-bottom: 0.75rem; }
+.empty { color: var(--muted); font-style: italic; font-size: 0.9rem; }
+.cinema-filters { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
+.cf-btn {
+  font-size: 0.75rem; padding: 4px 12px; border-radius: 999px;
+  border: 1px solid #334155; background: transparent; color: var(--muted);
+  cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.cf-btn.active { background: #1e3a5f; color: #93c5fd; border-color: #1d4ed8; }
+.cf-btn:hover { border-color: var(--accent); color: var(--text); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Now Playing</h1>
+  <p class="meta">Generated 08 Jun 2026, 21:19&nbsp;&nbsp;·&nbsp;&nbsp;<span id="film-count">44</span> films found</p>
+</header>
+
+<div class="cinema-filters"><button class="cf-btn active" data-cinema="Eye Filmmuseum">Eye Filmmuseum</button><button class="cf-btn active" data-cinema="Filmhallen">Filmhallen</button><button class="cf-btn active" data-cinema="Filmkoepel">Filmkoepel</button><button class="cf-btn active" data-cinema="Filmschuur">Filmschuur</button></div>
+<div class="grid"><div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/ld7Op86fHViqKRRFjxHZmHA9mGY.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt42639200/" target="_blank">Haarlem in Oorlogstijd</a> <span class="year">(2026)</span></h3>
+    <div class="badges"><span class="badge green">IMDb 8.0</span><span class="badge gray" style="visibility:hidden">RT —</span></div>
+    <p class="plot">De getuigenissen van 25 Haarlemmers over hun jeugd in de Tweede Wereldoorlog vertellen het complete verhaal over Haarlem in de Tweede Wereldoorlog</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Tue 9 Jun</span><span class="st-times">11:00 · 14:00 · 18:45</span><a class="ctag" href="https://filmkoepel.nl/films/haarlem-in-oorlogstijd/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Wed 10 Jun</span><span class="st-times">14:00 · 18:45</span><a class="ctag" href="https://filmkoepel.nl/films/haarlem-in-oorlogstijd/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Thu 11 Jun</span><span class="st-times">11:00 · 18:30</span><a class="ctag" href="https://filmkoepel.nl/films/haarlem-in-oorlogstijd/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Fri 12 Jun</span><span class="st-times">11:00 · 19:00</span><a class="ctag" href="https://filmkoepel.nl/films/haarlem-in-oorlogstijd/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sat 13 Jun</span><span class="st-times">11:00 · 18:30</span><a class="ctag" href="https://filmkoepel.nl/films/haarlem-in-oorlogstijd/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sun 14 Jun</span><span class="st-times">11:00 · 18:30</span><a class="ctag" href="https://filmkoepel.nl/films/haarlem-in-oorlogstijd/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Mon 15 Jun</span><span class="st-times">11:00 · 18:30</span><a class="ctag" href="https://filmkoepel.nl/films/haarlem-in-oorlogstijd/" target="_blank">Filmkoepel</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/vUwyhNWBKkSwK8ELvEeBRwV724h.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt31514146/" target="_blank">I Swear</a> <span class="year">(2026)</span></h3>
+    <div class="badges"><span class="badge green">IMDb 8.4</span><span class="badge green">RT 97%</span></div>
+    <p class="plot">John Davidson: diagnosed with Tourette's syndrome at a young age which alienated him from his peers, he struggled with a condition few people had witnessed.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">11:00 · 18:30</span><a class="ctag" href="https://filmhallen.nl/films/i-swear/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Tue 9 Jun</span><span class="st-times">11:15 · 20:45</span><a class="ctag" href="https://filmkoepel.nl/films/i-swear/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">11:00</span><a class="ctag" href="https://filmhallen.nl/films/i-swear/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Wed 10 Jun</span><span class="st-times">11:15 · 20:45</span><a class="ctag" href="https://filmkoepel.nl/films/i-swear/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Thu 11 Jun</span><span class="st-times">13:45 · 21:00</span><a class="ctag" href="https://filmhallen.nl/films/i-swear/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Thu 11 Jun</span><span class="st-times">14:00 · 18:45</span><a class="ctag" href="https://filmkoepel.nl/films/i-swear/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Fri 12 Jun</span><span class="st-times">13:45 · 21:00</span><a class="ctag" href="https://filmhallen.nl/films/i-swear/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Fri 12 Jun</span><span class="st-times">14:00 · 18:45</span><a class="ctag" href="https://filmkoepel.nl/films/i-swear/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">13:45 · 21:00</span><a class="ctag" href="https://filmhallen.nl/films/i-swear/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sat 13 Jun</span><span class="st-times">14:00 · 18:45</span><a class="ctag" href="https://filmkoepel.nl/films/i-swear/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">13:45 · 21:00</span><a class="ctag" href="https://filmhallen.nl/films/i-swear/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sun 14 Jun</span><span class="st-times">14:00 · 18:45</span><a class="ctag" href="https://filmkoepel.nl/films/i-swear/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">13:45 · 21:00</span><a class="ctag" href="https://filmhallen.nl/films/i-swear/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Mon 15 Jun</span><span class="st-times">14:00 · 18:45</span><a class="ctag" href="https://filmkoepel.nl/films/i-swear/" target="_blank">Filmkoepel</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://m.media-amazon.com/images/M/MV5BZGFiNGNmY2YtMmZkNS00NzkwLWFlNGYtNzYzMjI1ZTM0NmJlXkEyXkFqcGc@._V1_SX300.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt32252801/" target="_blank">Blue Heron</a> <span class="year">(2025)</span></h3>
+    <div class="badges"><span class="badge green">RT 97%</span><span class="badge gray" style="visibility:hidden">TMDb —</span></div>
+    <p class="plot">A family of six settles into their new home on Vancouver Island as internal dynamics are slowly revealed through the eyes of the youngest child.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">11:00 · 16:45 · 18:45</span><a class="ctag" href="https://filmhallen.nl/films/blue-heron/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Tue 9 Jun</span><span class="st-times">21:00</span><a class="ctag" href="https://www.schuur.nl/film/blue-heron" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">11:00 · 16:45 · 18:45</span><a class="ctag" href="https://filmhallen.nl/films/blue-heron/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Wed 10 Jun</span><span class="st-times">15:50</span><a class="ctag" href="https://www.schuur.nl/film/blue-heron" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Thu 11 Jun</span><span class="st-times">12:00 · 16:45 · 18:45</span><a class="ctag" href="https://filmhallen.nl/films/blue-heron/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Thu 11 Jun</span><span class="st-times">21:15</span><a class="ctag" href="https://www.schuur.nl/film/blue-heron" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Fri 12 Jun</span><span class="st-times">10:45 · 19:00</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/blue-heron/1626031" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Fri 12 Jun</span><span class="st-times">12:00 · 16:45 · 18:45</span><a class="ctag" href="https://filmhallen.nl/films/blue-heron/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Fri 12 Jun</span><span class="st-times">17:00</span><a class="ctag" href="https://www.schuur.nl/film/blue-heron" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">16:45 · 18:45</span><a class="ctag" href="https://filmhallen.nl/films/blue-heron/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sat 13 Jun</span><span class="st-times">20:45</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/blue-heron/1626031" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Sat 13 Jun</span><span class="st-times">21:15</span><a class="ctag" href="https://www.schuur.nl/film/blue-heron" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sun 14 Jun</span><span class="st-times">13:15 · 18:15</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/blue-heron/1626031" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">16:45 · 18:45</span><a class="ctag" href="https://filmhallen.nl/films/blue-heron/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">12:00 · 16:45 · 18:45</span><a class="ctag" href="https://filmhallen.nl/films/blue-heron/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Mon 15 Jun</span><span class="st-times">19:00</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/blue-heron/1626031" target="_blank">Eye Filmmuseum</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/rhGx6E3qRNMgj3i5su2oukNHwIQ.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt26657236/" target="_blank">Backrooms</a> <span class="year">(2026)</span></h3>
+    <div class="badges"><span class="badge green">IMDb 7.1</span><span class="badge green">RT 88%</span></div>
+    <p class="plot">After a therapist's patient disappears into a dimension beyond reality, she must venture into the unknown to save him.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">11:15 · 16:30 · 19:00 · 21:30</span><a class="ctag" href="https://filmhallen.nl/films/backrooms/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Tue 9 Jun</span><span class="st-times">13:45 · 16:30 · 21:30</span><a class="ctag" href="https://filmkoepel.nl/films/backrooms/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">11:15 · 16:30 · 21:00</span><a class="ctag" href="https://filmhallen.nl/films/backrooms/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Wed 10 Jun</span><span class="st-times">16:30 · 21:30</span><a class="ctag" href="https://filmkoepel.nl/films/backrooms/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Thu 11 Jun</span><span class="st-times">11:00 · 16:00 · 21:30</span><a class="ctag" href="https://filmhallen.nl/films/backrooms/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Thu 11 Jun</span><span class="st-times">16:00 · 21:30</span><a class="ctag" href="https://filmkoepel.nl/films/backrooms/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Fri 12 Jun</span><span class="st-times">11:00 · 16:00 · 18:30 · 21:30</span><a class="ctag" href="https://filmhallen.nl/films/backrooms/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Fri 12 Jun</span><span class="st-times">16:00 · 21:15</span><a class="ctag" href="https://filmkoepel.nl/films/backrooms/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">11:00 · 16:00 · 18:30 · 21:30</span><a class="ctag" href="https://filmhallen.nl/films/backrooms/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sat 13 Jun</span><span class="st-times">16:00 · 21:30</span><a class="ctag" href="https://filmkoepel.nl/films/backrooms/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">11:00 · 16:00 · 18:30 · 21:30</span><a class="ctag" href="https://filmhallen.nl/films/backrooms/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sun 14 Jun</span><span class="st-times">16:00 · 21:30</span><a class="ctag" href="https://filmkoepel.nl/films/backrooms/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">11:00 · 16:00 · 18:30 · 21:30</span><a class="ctag" href="https://filmhallen.nl/films/backrooms/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Mon 15 Jun</span><span class="st-times">16:00 · 21:30</span><a class="ctag" href="https://filmkoepel.nl/films/backrooms/" target="_blank">Filmkoepel</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/rnIOUhzwJDfgQakx8EjoNyItKgs.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt33071426/" target="_blank">The Drama</a> <span class="year">(2026)</span></h3>
+    <div class="badges"><span class="badge green">RT 76%</span><span class="badge green">TMDb 7.0</span></div>
+    <p class="plot">A happily engaged couple is put to the test when an unexpected turn sends their wedding week off the rails.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">11:15 · 21:15</span><a class="ctag" href="https://filmhallen.nl/films/the-drama/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">11:15 · 21:15</span><a class="ctag" href="https://filmhallen.nl/films/the-drama/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Thu 11 Jun</span><span class="st-times">13:30</span><a class="ctag" href="https://filmhallen.nl/films/the-drama/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Fri 12 Jun</span><span class="st-times">13:30</span><a class="ctag" href="https://filmhallen.nl/films/the-drama/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">13:30</span><a class="ctag" href="https://filmhallen.nl/films/the-drama/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">13:30</span><a class="ctag" href="https://filmhallen.nl/films/the-drama/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">13:30</span><a class="ctag" href="https://filmhallen.nl/films/the-drama/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/abdw51gf1oy3UWllAwqGl6WdkiS.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt36580119/" target="_blank">The President's Cake</a> <span class="year">(2025)</span></h3>
+    <div class="badges"><span class="badge green">RT 99%</span><span class="badge green">TMDb 7.4</span></div>
+    <p class="plot">In 1990s Iraq, 9-year-old Lamia must bake Saddam Hussein's birthday cake. She scrambles to find ingredients for this compulsory task while facing potential punishment if she fails.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Tue 9 Jun</span><span class="st-times">11:30 · 21:00</span><a class="ctag" href="https://filmkoepel.nl/films/the-presidents-cake/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Tue 9 Jun</span><span class="st-times">14:00</span><a class="ctag" href="https://www.schuur.nl/film/the-presidents-cake" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">14:15 · 19:00</span><a class="ctag" href="https://filmhallen.nl/films/the-presidents-cake/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Wed 10 Jun</span><span class="st-times">11:30</span><a class="ctag" href="https://filmkoepel.nl/films/the-presidents-cake/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">14:15 · 19:00</span><a class="ctag" href="https://filmhallen.nl/films/the-presidents-cake/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Thu 11 Jun</span><span class="st-times">14:15</span><a class="ctag" href="https://filmhallen.nl/films/the-presidents-cake/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Thu 11 Jun</span><span class="st-times">16:30</span><a class="ctag" href="https://filmkoepel.nl/films/the-presidents-cake/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Fri 12 Jun</span><span class="st-times">12:00</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/the-presidents-cake/1626478" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Fri 12 Jun</span><span class="st-times">13:00</span><a class="ctag" href="https://www.schuur.nl/film/the-presidents-cake" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Fri 12 Jun</span><span class="st-times">14:15</span><a class="ctag" href="https://filmhallen.nl/films/the-presidents-cake/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Fri 12 Jun</span><span class="st-times">16:30</span><a class="ctag" href="https://filmkoepel.nl/films/the-presidents-cake/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">11:45</span><a class="ctag" href="https://filmhallen.nl/films/the-presidents-cake/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sat 13 Jun</span><span class="st-times">13:15</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/the-presidents-cake/1626478" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sat 13 Jun</span><span class="st-times">16:30</span><a class="ctag" href="https://filmkoepel.nl/films/the-presidents-cake/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">11:45</span><a class="ctag" href="https://filmhallen.nl/films/the-presidents-cake/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sun 14 Jun</span><span class="st-times">16:30</span><a class="ctag" href="https://filmkoepel.nl/films/the-presidents-cake/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">14:15</span><a class="ctag" href="https://filmhallen.nl/films/the-presidents-cake/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Mon 15 Jun</span><span class="st-times">16:30</span><a class="ctag" href="https://filmkoepel.nl/films/the-presidents-cake/" target="_blank">Filmkoepel</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://m.media-amazon.com/images/M/MV5BYzJmNzE3MTAtNmFlNC00MGJlLTljMGUtY2IwZDI5MGZiNWJlXkEyXkFqcGc@._V1_SX300.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt35705184/" target="_blank">Tre ciotole</a> <span class="year">(2025)</span><span class="en-title">Three Goodbyes</span></h3>
+    <div class="badges"><span class="badge green">IMDb 7.0</span><span class="badge gray" style="visibility:hidden">RT —</span></div>
+    <p class="plot">Follows a couple, Marta and Antonio, who split up after what seems like an trivial argument.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">11:45</span><a class="ctag" href="https://filmhallen.nl/films/tre-ciotole/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Tue 9 Jun</span><span class="st-times">13:30</span><a class="ctag" href="https://filmkoepel.nl/films/tre-ciotole/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">11:45</span><a class="ctag" href="https://filmhallen.nl/films/tre-ciotole/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Wed 10 Jun</span><span class="st-times">13:30</span><a class="ctag" href="https://filmkoepel.nl/films/tre-ciotole/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Thu 11 Jun</span><span class="st-times">11:30</span><a class="ctag" href="https://filmkoepel.nl/films/tre-ciotole/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Thu 11 Jun</span><span class="st-times">13:30</span><a class="ctag" href="https://filmhallen.nl/films/tre-ciotole/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Fri 12 Jun</span><span class="st-times">11:30</span><a class="ctag" href="https://filmkoepel.nl/films/tre-ciotole/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Fri 12 Jun</span><span class="st-times">13:30</span><a class="ctag" href="https://filmhallen.nl/films/tre-ciotole/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sat 13 Jun</span><span class="st-times">11:30</span><a class="ctag" href="https://filmkoepel.nl/films/tre-ciotole/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">13:30</span><a class="ctag" href="https://filmhallen.nl/films/tre-ciotole/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sun 14 Jun</span><span class="st-times">11:30</span><a class="ctag" href="https://filmkoepel.nl/films/tre-ciotole/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">13:30</span><a class="ctag" href="https://filmhallen.nl/films/tre-ciotole/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Mon 15 Jun</span><span class="st-times">11:30</span><a class="ctag" href="https://filmkoepel.nl/films/tre-ciotole/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">13:30</span><a class="ctag" href="https://filmhallen.nl/films/tre-ciotole/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/6MY0Ltfgb6KhOKaDpFWc0f98iZQ.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt35932393/" target="_blank">Agatha's Almanac</a> <span class="year">(2025)</span></h3>
+    <div class="badges"><span class="badge gray" style="visibility:hidden">IMDb —</span><span class="badge gray" style="visibility:hidden">RT —</span></div>
+    <p class="plot">90-year-old Agatha Bock maintains her ancestral farm and heirloom seeds without modern amenities, preserving traditional practices through daily routines that document a fading way of life.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Tue 9 Jun</span><span class="st-times">11:45 · 18:45</span><a class="ctag" href="https://filmkoepel.nl/films/agathas-almanac/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Tue 9 Jun</span><span class="st-times">14:15 · 19:10</span><a class="ctag" href="https://www.schuur.nl/film/agathas-almanac" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">14:15 · 18:45</span><a class="ctag" href="https://filmhallen.nl/films/agathas-almanac/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Wed 10 Jun</span><span class="st-times">11:45 · 18:45</span><a class="ctag" href="https://filmkoepel.nl/films/agathas-almanac/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Wed 10 Jun</span><span class="st-times">14:00 · 19:15</span><a class="ctag" href="https://www.schuur.nl/film/agathas-almanac" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">14:15 · 18:45</span><a class="ctag" href="https://filmhallen.nl/films/agathas-almanac/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Thu 11 Jun</span><span class="st-times">11:00 · 16:45 · 18:15</span><a class="ctag" href="https://filmhallen.nl/films/agathas-almanac/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Thu 11 Jun</span><span class="st-times">14:00 · 18:50</span><a class="ctag" href="https://filmkoepel.nl/films/agathas-almanac/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Thu 11 Jun</span><span class="st-times">14:00 · 19:10</span><a class="ctag" href="https://www.schuur.nl/film/agathas-almanac" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Fri 12 Jun</span><span class="st-times">11:00 · 16:45</span><a class="ctag" href="https://filmhallen.nl/films/agathas-almanac/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Fri 12 Jun</span><span class="st-times">14:00 · 18:50</span><a class="ctag" href="https://filmkoepel.nl/films/agathas-almanac/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Fri 12 Jun</span><span class="st-times">14:45</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/agathas-almanac/1603497" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Fri 12 Jun</span><span class="st-times">15:10 · 19:10</span><a class="ctag" href="https://www.schuur.nl/film/agathas-almanac" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sat 13 Jun</span><span class="st-times">11:00</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/agathas-almanac/1603497" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sat 13 Jun</span><span class="st-times">14:00 · 18:50</span><a class="ctag" href="https://filmkoepel.nl/films/agathas-almanac/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Sat 13 Jun</span><span class="st-times">14:45 · 19:10</span><a class="ctag" href="https://www.schuur.nl/film/agathas-almanac" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">16:45</span><a class="ctag" href="https://filmhallen.nl/films/agathas-almanac/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sun 14 Jun</span><span class="st-times">11:00</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/agathas-almanac/1603497" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sun 14 Jun</span><span class="st-times">14:00 · 18:50</span><a class="ctag" href="https://filmkoepel.nl/films/agathas-almanac/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">16:45</span><a class="ctag" href="https://filmhallen.nl/films/agathas-almanac/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Mon 15 Jun</span><span class="st-times">14:00 · 18:50</span><a class="ctag" href="https://filmkoepel.nl/films/agathas-almanac/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">16:45</span><a class="ctag" href="https://filmhallen.nl/films/agathas-almanac/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/lKK9ImwpoTCwDZKgYpjIIJCnlf0.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt29028515/" target="_blank">Wasteman</a> <span class="year">(2026)</span></h3>
+    <div class="badges"><span class="badge green">RT 100%</span><span class="badge green">TMDb 7.1</span></div>
+    <p class="plot">Taylor's hopes for a fresh start post-parole are jeopardised by cellmate Dee's arrival. As Dee takes Taylor under his wing, a vicious attack tests their bond, forcing Taylor to choose between protecting Dee and his own chances at freedom.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">13:00</span><a class="ctag" href="https://filmhallen.nl/films/wasteman/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">13:00</span><a class="ctag" href="https://filmhallen.nl/films/wasteman/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/cOJkkfI9SzXxqoPjc3MttsqGsxr.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt32622406/" target="_blank">A Sad and Beautiful World</a> <span class="year">(2025)</span></h3>
+    <div class="badges"><span class="badge green">TMDb 8.2</span><span class="badge gray" style="visibility:hidden">RT —</span></div>
+    <p class="plot">In this cosmic romance set in Beirut, two star-crossed lovers, one an eternal optimist and the other an impulsive pragmatist, must decide if they want to build a family and chart a track to happiness, despite the tragic fates rava...</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Tue 9 Jun</span><span class="st-times">13:15 · 18:30</span><a class="ctag" href="https://filmkoepel.nl/films/a-sad-and-beautiful-world/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">13:45 · 18:40</span><a class="ctag" href="https://filmhallen.nl/films/a-sad-and-beautiful-world/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Tue 9 Jun</span><span class="st-times">20:35</span><a class="ctag" href="https://www.schuur.nl/film/a-sad-and-beautiful-world" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Wed 10 Jun</span><span class="st-times">12:45 · 18:30</span><a class="ctag" href="https://filmkoepel.nl/films/a-sad-and-beautiful-world/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">13:45 · 18:40</span><a class="ctag" href="https://filmhallen.nl/films/a-sad-and-beautiful-world/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Wed 10 Jun</span><span class="st-times">16:50</span><a class="ctag" href="https://www.schuur.nl/film/a-sad-and-beautiful-world" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Thu 11 Jun</span><span class="st-times">11:20 · 18:30</span><a class="ctag" href="https://filmhallen.nl/films/a-sad-and-beautiful-world/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Thu 11 Jun</span><span class="st-times">13:45 · 18:30</span><a class="ctag" href="https://filmkoepel.nl/films/a-sad-and-beautiful-world/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Thu 11 Jun</span><span class="st-times">16:40</span><a class="ctag" href="https://www.schuur.nl/film/a-sad-and-beautiful-world" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Fri 12 Jun</span><span class="st-times">11:20 · 18:30</span><a class="ctag" href="https://filmhallen.nl/films/a-sad-and-beautiful-world/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Fri 12 Jun</span><span class="st-times">13:45 · 18:30</span><a class="ctag" href="https://filmkoepel.nl/films/a-sad-and-beautiful-world/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Fri 12 Jun</span><span class="st-times">21:15</span><a class="ctag" href="https://www.schuur.nl/film/a-sad-and-beautiful-world" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Fri 12 Jun</span><span class="st-times">21:15</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/a-sad-and-beautiful-world/1641396" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">11:20 · 18:30</span><a class="ctag" href="https://filmhallen.nl/films/a-sad-and-beautiful-world/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sat 13 Jun</span><span class="st-times">13:45 · 18:30</span><a class="ctag" href="https://filmkoepel.nl/films/a-sad-and-beautiful-world/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Sat 13 Jun</span><span class="st-times">16:50</span><a class="ctag" href="https://www.schuur.nl/film/a-sad-and-beautiful-world" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sat 13 Jun</span><span class="st-times">18:15</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/a-sad-and-beautiful-world/1641396" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">11:20 · 18:30</span><a class="ctag" href="https://filmhallen.nl/films/a-sad-and-beautiful-world/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sun 14 Jun</span><span class="st-times">12:45</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/a-sad-and-beautiful-world/1641396" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sun 14 Jun</span><span class="st-times">13:45 · 18:30</span><a class="ctag" href="https://filmkoepel.nl/films/a-sad-and-beautiful-world/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">11:20 · 18:30</span><a class="ctag" href="https://filmhallen.nl/films/a-sad-and-beautiful-world/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Mon 15 Jun</span><span class="st-times">13:45 · 18:30</span><a class="ctag" href="https://filmkoepel.nl/films/a-sad-and-beautiful-world/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Mon 15 Jun</span><span class="st-times">18:45</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/a-sad-and-beautiful-world/1641396" target="_blank">Eye Filmmuseum</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/3682SbY3rsNKsQzFpPUKrWdGmmx.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt35513027/" target="_blank">Los Domingos</a> <span class="year">(2025)</span></h3>
+    <div class="badges"><span class="badge green">TMDb 7.0</span><span class="badge gray" style="visibility:hidden">RT —</span></div>
+    <p class="plot">A young woman named Ainara faces personal crossroads while exploring career possibilities, much to her family's concern</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">13:30</span><a class="ctag" href="https://filmhallen.nl/films/los-domingos/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Tue 9 Jun</span><span class="st-times">16:10</span><a class="ctag" href="https://filmkoepel.nl/films/los-domingos/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Tue 9 Jun</span><span class="st-times">16:30</span><a class="ctag" href="https://www.schuur.nl/film/los-domingos" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">13:30</span><a class="ctag" href="https://filmhallen.nl/films/los-domingos/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Wed 10 Jun</span><span class="st-times">16:10</span><a class="ctag" href="https://filmkoepel.nl/films/los-domingos/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Wed 10 Jun</span><span class="st-times">21:05</span><a class="ctag" href="https://www.schuur.nl/film/los-domingos" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Thu 11 Jun</span><span class="st-times">11:15</span><a class="ctag" href="https://filmhallen.nl/films/los-domingos/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Thu 11 Jun</span><span class="st-times">11:30</span><a class="ctag" href="https://filmkoepel.nl/films/los-domingos/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Fri 12 Jun</span><span class="st-times">11:15</span><a class="ctag" href="https://filmhallen.nl/films/los-domingos/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Fri 12 Jun</span><span class="st-times">11:30</span><a class="ctag" href="https://filmkoepel.nl/films/los-domingos/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Fri 12 Jun</span><span class="st-times">12:45</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/los-domingos/1626466" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">11:15</span><a class="ctag" href="https://filmhallen.nl/films/los-domingos/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sat 13 Jun</span><span class="st-times">11:30</span><a class="ctag" href="https://filmkoepel.nl/films/los-domingos/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sat 13 Jun</span><span class="st-times">15:30</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/los-domingos/1626466" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">11:15</span><a class="ctag" href="https://filmhallen.nl/films/los-domingos/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sun 14 Jun</span><span class="st-times">11:30</span><a class="ctag" href="https://filmkoepel.nl/films/los-domingos/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sun 14 Jun</span><span class="st-times">18:45</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/los-domingos/1626466" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">11:15</span><a class="ctag" href="https://filmhallen.nl/films/los-domingos/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Mon 15 Jun</span><span class="st-times">11:30</span><a class="ctag" href="https://filmkoepel.nl/films/los-domingos/" target="_blank">Filmkoepel</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/t8jhPhAmYc9abcR8iODHINrhDKh.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt37660493/" target="_blank">Komedie Elahi</a> <span class="year">(2025)</span></h3>
+    <div class="badges"><span class="badge gray" style="visibility:hidden">IMDb —</span><span class="badge gray" style="visibility:hidden">RT —</span></div>
+    <p class="plot">N/A</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">14:00 · 18:45</span><a class="ctag" href="https://filmhallen.nl/films/divine-comedy/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Tue 9 Jun</span><span class="st-times">14:15 · 18:30</span><a class="ctag" href="https://filmkoepel.nl/films/divine-comedy/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">14:00 · 18:45</span><a class="ctag" href="https://filmhallen.nl/films/divine-comedy/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Wed 10 Jun</span><span class="st-times">14:15 · 18:30</span><a class="ctag" href="https://filmkoepel.nl/films/divine-comedy/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Thu 11 Jun</span><span class="st-times">16:15</span><a class="ctag" href="https://filmkoepel.nl/films/divine-comedy/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Thu 11 Jun</span><span class="st-times">16:15</span><a class="ctag" href="https://filmhallen.nl/films/divine-comedy/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Fri 12 Jun</span><span class="st-times">16:15</span><a class="ctag" href="https://filmkoepel.nl/films/divine-comedy/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Fri 12 Jun</span><span class="st-times">16:15</span><a class="ctag" href="https://filmhallen.nl/films/divine-comedy/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Fri 12 Jun</span><span class="st-times">18:30</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/divine-comedy/1626034" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sat 13 Jun</span><span class="st-times">16:15</span><a class="ctag" href="https://filmkoepel.nl/films/divine-comedy/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">16:15</span><a class="ctag" href="https://filmhallen.nl/films/divine-comedy/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sat 13 Jun</span><span class="st-times">18:30</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/divine-comedy/1626034" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sun 14 Jun</span><span class="st-times">16:15</span><a class="ctag" href="https://filmkoepel.nl/films/divine-comedy/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">16:15</span><a class="ctag" href="https://filmhallen.nl/films/divine-comedy/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sun 14 Jun</span><span class="st-times">16:30</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/divine-comedy/1626034" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Mon 15 Jun</span><span class="st-times">16:15</span><a class="ctag" href="https://filmkoepel.nl/films/divine-comedy/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">16:15</span><a class="ctag" href="https://filmhallen.nl/films/divine-comedy/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Mon 15 Jun</span><span class="st-times">18:15</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/divine-comedy/1626034" target="_blank">Eye Filmmuseum</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/gQRfiyfGvr1az0quaYyMram3Aqt.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0086879/" target="_blank">Amadeus</a> <span class="year">(1984)</span></h3>
+    <div class="badges"><span class="badge green">RT 90%</span><span class="badge green">TMDb 8.0</span></div>
+    <p class="plot">Disciplined Italian composer Antonio Salieri becomes consumed by jealousy and resentment towards the hedonistic and remarkably talented young Salzburger composer Wolfgang Amadeus Mozart.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">15:15</span><a class="ctag" href="https://filmhallen.nl/films/amadeus/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">15:15</span><a class="ctag" href="https://filmhallen.nl/films/amadeus/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Thu 11 Jun</span><span class="st-times">15:30</span><a class="ctag" href="https://filmhallen.nl/films/amadeus/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Fri 12 Jun</span><span class="st-times">15:30</span><a class="ctag" href="https://filmhallen.nl/films/amadeus/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">15:15</span><a class="ctag" href="https://filmhallen.nl/films/amadeus/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sat 13 Jun</span><span class="st-times">15:45</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/amadeus/1612290" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">12:00</span><a class="ctag" href="https://filmhallen.nl/films/amadeus/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">15:15</span><a class="ctag" href="https://filmhallen.nl/films/amadeus/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://m.media-amazon.com/images/M/MV5BN2MzZDk2Y2ItYzNiZS00Y2Y3LTg2NzYtMmI3NmI4NGFhYzBmXkEyXkFqcGc@._V1_QL75_UX380_CR0,0,380,562_.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt32499466/" target="_blank">Finding Emily</a> <span class="year">(2026)</span></h3>
+    <div class="badges"><span class="badge green">RT 100%</span><span class="badge gray" style="visibility:hidden">TMDb —</span></div>
+    <p class="plot">When a lovesick musician is given the wrong number for his dream girl, he teams up with a driven psychology student to find her. Together, they spark a campus-wide frenzy that tests their own hearts.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Tue 9 Jun</span><span class="st-times">16:00 · 18:45 · 21:15</span><a class="ctag" href="https://filmkoepel.nl/films/finding-emily/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">16:15 · 21:00</span><a class="ctag" href="https://filmhallen.nl/films/finding-emily/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Wed 10 Jun</span><span class="st-times">16:00 · 18:45 · 21:15</span><a class="ctag" href="https://filmkoepel.nl/films/finding-emily/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">16:15 · 21:00</span><a class="ctag" href="https://filmhallen.nl/films/finding-emily/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Thu 11 Jun</span><span class="st-times">13:45 · 21:15</span><a class="ctag" href="https://filmkoepel.nl/films/finding-emily/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Thu 11 Jun</span><span class="st-times">16:15 · 18:50</span><a class="ctag" href="https://filmhallen.nl/films/finding-emily/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Fri 12 Jun</span><span class="st-times">13:45 · 21:15</span><a class="ctag" href="https://filmkoepel.nl/films/finding-emily/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Fri 12 Jun</span><span class="st-times">16:15 · 18:50</span><a class="ctag" href="https://filmhallen.nl/films/finding-emily/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sat 13 Jun</span><span class="st-times">13:45 · 21:15</span><a class="ctag" href="https://filmkoepel.nl/films/finding-emily/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">16:15 · 18:50</span><a class="ctag" href="https://filmhallen.nl/films/finding-emily/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sun 14 Jun</span><span class="st-times">13:45 · 21:15</span><a class="ctag" href="https://filmkoepel.nl/films/finding-emily/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">16:15 · 18:50</span><a class="ctag" href="https://filmhallen.nl/films/finding-emily/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Mon 15 Jun</span><span class="st-times">13:45 · 21:15</span><a class="ctag" href="https://filmkoepel.nl/films/finding-emily/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">16:15 · 18:50</span><a class="ctag" href="https://filmhallen.nl/films/finding-emily/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/lyjTzevJIVyGCgWUKFNuY6Mb72J.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt39131581/" target="_blank">Treat Her Like A Lady</a> <span class="year">(2026)</span></h3>
+    <div class="badges"><span class="badge green">IMDb 7.1</span><span class="badge gray" style="visibility:hidden">RT —</span></div>
+    <p class="plot">When single mother Sandra, full of unwavering energy, is evicted from her apartment by the Dutch government due to fraud, she convinces her daughters Harrie and Stella that their emergency shelter is a holiday hotel. Taking care o...</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Tue 9 Jun</span><span class="st-times">16:15</span><a class="ctag" href="https://filmkoepel.nl/films/treat-her-like-a-lady/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">16:30</span><a class="ctag" href="https://filmhallen.nl/films/treat-her-like-a-lady/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Wed 10 Jun</span><span class="st-times">16:15</span><a class="ctag" href="https://filmkoepel.nl/films/treat-her-like-a-lady/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">16:30</span><a class="ctag" href="https://filmhallen.nl/films/treat-her-like-a-lady/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Thu 11 Jun</span><span class="st-times">11:15</span><a class="ctag" href="https://filmkoepel.nl/films/treat-her-like-a-lady/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Thu 11 Jun</span><span class="st-times">13:00</span><a class="ctag" href="https://filmhallen.nl/films/treat-her-like-a-lady/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Fri 12 Jun</span><span class="st-times">11:15</span><a class="ctag" href="https://filmkoepel.nl/films/treat-her-like-a-lady/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Fri 12 Jun</span><span class="st-times">13:00</span><a class="ctag" href="https://filmhallen.nl/films/treat-her-like-a-lady/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Fri 12 Jun</span><span class="st-times">16:15</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/treat-her-like-a-lady/1632978" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sat 13 Jun</span><span class="st-times">11:15</span><a class="ctag" href="https://filmkoepel.nl/films/treat-her-like-a-lady/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sat 13 Jun</span><span class="st-times">12:00</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/treat-her-like-a-lady/1632978" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">12:45</span><a class="ctag" href="https://filmhallen.nl/films/treat-her-like-a-lady/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sun 14 Jun</span><span class="st-times">11:15</span><a class="ctag" href="https://filmkoepel.nl/films/treat-her-like-a-lady/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sun 14 Jun</span><span class="st-times">20:30</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/treat-her-like-a-lady/1632978" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Mon 15 Jun</span><span class="st-times">11:15</span><a class="ctag" href="https://filmkoepel.nl/films/treat-her-like-a-lady/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">12:45</span><a class="ctag" href="https://filmhallen.nl/films/treat-her-like-a-lady/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/bRwnj8WEKBCvmfeUNOukJPwB43K.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt37287335/" target="_blank">Obsession</a> <span class="year">(2026)</span></h3>
+    <div class="badges"><span class="badge green">RT 95%</span><span class="badge green">TMDb 7.9</span></div>
+    <p class="plot">After breaking the mysterious "One Wish Willow" to win his crush's heart, a hopeless romantic finds himself getting exactly what he asked for but soon discovers that some desires come at a dark, sinister price.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">16:15 · 18:50 · 21:15</span><a class="ctag" href="https://filmhallen.nl/films/obsession/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">16:15 · 18:50 · 21:15</span><a class="ctag" href="https://filmhallen.nl/films/obsession/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Thu 11 Jun</span><span class="st-times">11:30 · 16:15 · 19:00 · 21:15</span><a class="ctag" href="https://filmhallen.nl/films/obsession/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Fri 12 Jun</span><span class="st-times">11:30 · 16:15 · 19:00 · 21:15</span><a class="ctag" href="https://filmhallen.nl/films/obsession/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">11:30 · 16:15 · 19:00 · 21:15</span><a class="ctag" href="https://filmhallen.nl/films/obsession/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">11:30 · 16:15 · 19:00 · 21:15</span><a class="ctag" href="https://filmhallen.nl/films/obsession/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">11:30 · 16:15 · 19:00 · 21:15</span><a class="ctag" href="https://filmhallen.nl/films/obsession/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/l77DRjJuykqKMtD9GTK4YT7qKHW.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0086425/" target="_blank">Terms of Endearment</a> <span class="year">(1983)</span></h3>
+    <div class="badges"><span class="badge green">RT 81%</span><span class="badge green">TMDb 7.1</span></div>
+    <p class="plot">Aurora, a finicky woman, is in search of true love while her daughter faces marital issues. Together, they help each other deal with problems and find reasons to live a joyful life.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">18:30</span><a class="ctag" href="https://filmhallen.nl/films/terms-endearment/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://m.media-amazon.com/images/M/MV5BNTY3ZmU5MjItN2YxNi00NDFjLTg4YTgtMWEwNDNkMjExZDVjXkEyXkFqcGc@._V1_SX300.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt36415630/" target="_blank">Fantastique</a> <span class="year">(2025)</span></h3>
+    <div class="badges"><span class="badge gray" style="visibility:hidden">IMDb —</span><span class="badge gray" style="visibility:hidden">RT —</span></div>
+    <p class="plot">A 14-year-old contortionist in Guinea balances caring for her sick mother and school with her dream of touring with a circus. As pressures mount, she questions her path and searches for her true identity.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Tue 9 Jun</span><span class="st-times">19:00</span><a class="ctag" href="https://www.schuur.nl/film/fantastique" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Wed 10 Jun</span><span class="st-times">17:40</span><a class="ctag" href="https://www.schuur.nl/film/fantastique" target="_blank">Filmschuur</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/yihdXomYb5kTeSivtFndMy5iDmf.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt12042730/" target="_blank">Project Hail Mary</a> <span class="year">(2026)</span></h3>
+    <div class="badges"><span class="badge green">RT 94%</span><span class="badge green">TMDb 8.7</span></div>
+    <p class="plot">Science teacher Ryland Grace wakes up on a spaceship light years from home with no recollection of who he is or how he got there. As his memory returns, he begins to uncover his mission: solve the riddle of the mysterious substance causing the sun to die out. He must call on his scientific knowledge and unorthodox ideas to save everything on Earth from extinction.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">20:45</span><a class="ctag" href="https://filmhallen.nl/films/project-hail-mary/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">20:45</span><a class="ctag" href="https://filmhallen.nl/films/project-hail-mary/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Thu 11 Jun</span><span class="st-times">20:45</span><a class="ctag" href="https://filmhallen.nl/films/project-hail-mary/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Fri 12 Jun</span><span class="st-times">20:45</span><a class="ctag" href="https://filmhallen.nl/films/project-hail-mary/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">20:45</span><a class="ctag" href="https://filmhallen.nl/films/project-hail-mary/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">20:45</span><a class="ctag" href="https://filmhallen.nl/films/project-hail-mary/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">20:45</span><a class="ctag" href="https://filmhallen.nl/films/project-hail-mary/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/m3mmFkPQKvPZq5exmh0bDuXlD9T.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0091763/" target="_blank">Platoon</a> <span class="year">(1986)</span></h3>
+    <div class="badges"><span class="badge green">RT 89%</span><span class="badge green">TMDb 7.8</span></div>
+    <p class="plot">As a young and naive recruit in Vietnam, Chris Taylor faces a moral crisis when confronted with the horrors of war and the duality of man.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">21:15</span><a class="ctag" href="https://filmhallen.nl/films/platoon/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://m.media-amazon.com/images/M/MV5BMTgwNDI1ZjctYWNmMS00MTJhLTg1ZWItMzI1Yjk5NjZkYWFkXkEyXkFqcGc@._V1_QL75_UX380_CR0,20,380,562_.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt15047880/" target="_blank">Disclosure Day</a> <span class="year">(2026)</span></h3>
+    <div class="badges"><span class="badge gray" style="visibility:hidden">IMDb —</span><span class="badge gray" style="visibility:hidden">RT —</span></div>
+    <p class="plot">If you found out we weren't alone, if someone showed you, proved it to you, would that frighten you?</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Wed 10 Jun</span><span class="st-times">15:15 · 21:00</span><a class="ctag" href="https://filmkoepel.nl/films/disclosure-day/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">20:00</span><a class="ctag" href="https://filmhallen.nl/films/disclosure-day/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Thu 11 Jun</span><span class="st-times">12:15 · 15:15 · 18:30 · 21:15</span><a class="ctag" href="https://filmhallen.nl/films/disclosure-day/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Thu 11 Jun</span><span class="st-times">12:30 · 15:45 · 18:30 · 20:45</span><a class="ctag" href="https://filmkoepel.nl/films/disclosure-day/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Fri 12 Jun</span><span class="st-times">12:15 · 15:15 · 18:30 · 21:00</span><a class="ctag" href="https://filmhallen.nl/films/disclosure-day/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Fri 12 Jun</span><span class="st-times">12:30 · 15:45 · 20:45</span><a class="ctag" href="https://filmkoepel.nl/films/disclosure-day/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Fri 12 Jun</span><span class="st-times">13:00 · 20:45</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/disclosure-day/1634456" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">12:15 · 15:15 · 18:30 · 21:00</span><a class="ctag" href="https://filmhallen.nl/films/disclosure-day/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sat 13 Jun</span><span class="st-times">12:30 · 15:45 · 18:30 · 20:45</span><a class="ctag" href="https://filmkoepel.nl/films/disclosure-day/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sat 13 Jun</span><span class="st-times">13:00 · 20:30</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/disclosure-day/1634456" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">12:15 · 15:15 · 18:30 · 21:00</span><a class="ctag" href="https://filmhallen.nl/films/disclosure-day/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sun 14 Jun</span><span class="st-times">12:30 · 15:45 · 18:30 · 20:45</span><a class="ctag" href="https://filmkoepel.nl/films/disclosure-day/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sun 14 Jun</span><span class="st-times">15:30 · 21:00</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/disclosure-day/1634456" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">12:15 · 15:15 · 18:30 · 21:00</span><a class="ctag" href="https://filmhallen.nl/films/disclosure-day/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Mon 15 Jun</span><span class="st-times">12:30 · 15:45 · 18:30 · 20:45</span><a class="ctag" href="https://filmkoepel.nl/films/disclosure-day/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Mon 15 Jun</span><span class="st-times">18:30 · 21:15</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/disclosure-day/1634456" target="_blank">Eye Filmmuseum</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/niKyjOqiB4XVl0BqgKTHIlHOCeF.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0093822/" target="_blank">Raising Arizona</a> <span class="year">(1987)</span></h3>
+    <div class="badges"><span class="badge green">RT 91%</span><span class="badge green">TMDb 7.1</span></div>
+    <p class="plot">When a childless couple—an ex-con and an ex-cop—take one of a wealthy family’s quintuplets to raise as their own, their lives grow more complicated than anticipated.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">18:45</span><a class="ctag" href="https://filmhallen.nl/films/raising-arizona/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/nSOJfWJCdVFZQwXQA7RXn7FIIiY.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt6019206/" target="_blank">Kill Bill: The Whole Bloody Affair</a> <span class="year">(2025)</span></h3>
+    <div class="badges"><span class="badge green">IMDb 8.8</span><span class="badge green">RT 100%</span></div>
+    <p class="plot">A female assassin seeks revenge on her former lover and squad members, all of whom left her for dead.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Wed 10 Jun</span><span class="st-times">19:00</span><a class="ctag" href="https://www.schuur.nl/film/kill-bill-the-whole-bloody-affair" target="_blank">Filmschuur</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/sP27Qm4THyRZyHjHYMfIDtJP6YE.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0087884/" target="_blank">Paris, Texas</a> <span class="year">(1984)</span></h3>
+    <div class="badges"><span class="badge green">RT 95%</span><span class="badge green">TMDb 8.1</span></div>
+    <p class="plot">A man wanders out of the desert not knowing who he is. His brother finds him, and helps to pull his memory back of the life he led before he walked out on his family and disappeared four years earlier.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">21:00</span><a class="ctag" href="https://filmhallen.nl/films/paris-texas/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://m.media-amazon.com/images/M/MV5BMjRhYmZiZjMtMmIzZC00NjM3LTg1N2MtMjg4MjkxZjAzODAxXkEyXkFqcGc@._V1_SX300.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt32429174/" target="_blank">Calle Málaga</a> <span class="year">(2025)</span></h3>
+    <div class="badges"><span class="badge green">RT 98%</span><span class="badge green">TMDb 7.3</span></div>
+    <p class="plot">An aging Spanish woman in Tangier resists her daughter's decision to sell her home. Determined to stay, she does everything she can to keep her home and reclaim the belongings of a lifetime. Along the way, she rediscovers love and...</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Thu 11 Jun</span><span class="st-times">14:15 · 18:55</span><a class="ctag" href="https://www.schuur.nl/film/calle-malaga" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Thu 11 Jun</span><span class="st-times">14:15 · 18:45</span><a class="ctag" href="https://filmhallen.nl/films/calle-malaga/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Thu 11 Jun</span><span class="st-times">16:15 · 18:50</span><a class="ctag" href="https://filmkoepel.nl/films/calle-malaga/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Fri 12 Jun</span><span class="st-times">14:15 · 18:45</span><a class="ctag" href="https://filmhallen.nl/films/calle-malaga/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Fri 12 Jun</span><span class="st-times">16:15 · 18:50</span><a class="ctag" href="https://filmkoepel.nl/films/calle-malaga/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Fri 12 Jun</span><span class="st-times">16:30 · 18:55</span><a class="ctag" href="https://www.schuur.nl/film/calle-malaga" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">14:15 · 18:45</span><a class="ctag" href="https://filmhallen.nl/films/calle-malaga/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sat 13 Jun</span><span class="st-times">16:15 · 18:50</span><a class="ctag" href="https://filmkoepel.nl/films/calle-malaga/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Sat 13 Jun</span><span class="st-times">16:35 · 18:55</span><a class="ctag" href="https://www.schuur.nl/film/calle-malaga" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">14:15 · 18:45</span><a class="ctag" href="https://filmhallen.nl/films/calle-malaga/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sun 14 Jun</span><span class="st-times">16:15 · 18:50</span><a class="ctag" href="https://filmkoepel.nl/films/calle-malaga/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">14:15 · 18:45</span><a class="ctag" href="https://filmhallen.nl/films/calle-malaga/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Mon 15 Jun</span><span class="st-times">16:15 · 18:50</span><a class="ctag" href="https://filmkoepel.nl/films/calle-malaga/" target="_blank">Filmkoepel</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/iTNHwO896WKkaoPtpMMS74d8VNi.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0095953/" target="_blank">Rain Man</a> <span class="year">(1988)</span></h3>
+    <div class="badges"><span class="badge green">RT 88%</span><span class="badge green">TMDb 7.8</span></div>
+    <p class="plot">When car dealer Charlie Babbitt learns that his estranged father has died, he returns home to Cincinnati, where he discovers that he has a savant older brother named Raymond and that his father's $3 million fortune is being left to the mental institution in which Raymond lives. Motivated by his father's money, Charlie checks Raymond out of the facility in order to return with him to Los Angeles. The brothers' cross-country trip ends up changing both their lives.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Thu 11 Jun</span><span class="st-times">18:45</span><a class="ctag" href="https://filmhallen.nl/films/rain-man/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/8hBGDCNJmBljmKbmFvt6Nk3Feua.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt35495035/" target="_blank">L’affaire Bojarski</a> <span class="year">(2026)</span><span class="en-title">L'Affaire Bojarski</span></h3>
+    <div class="badges"><span class="badge green">TMDb 7.0</span><span class="badge gray" style="visibility:hidden">RT —</span></div>
+    <p class="plot">A Polish engineer relocates to France and becomes a legendary counterfeiter. Working solo, he crafts flawless fake francs worth millions over 14 years, earning the nickname "Cézanne of counterfeit money" for his artistic skill and...</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Thu 11 Jun</span><span class="st-times">21:00</span><a class="ctag" href="https://filmkoepel.nl/films/laffaire-bojarski/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Thu 11 Jun</span><span class="st-times">21:00</span><a class="ctag" href="https://filmhallen.nl/films/laffaire-bojarski/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Fri 12 Jun</span><span class="st-times">21:00</span><a class="ctag" href="https://filmkoepel.nl/films/laffaire-bojarski/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Fri 12 Jun</span><span class="st-times">21:00</span><a class="ctag" href="https://filmhallen.nl/films/laffaire-bojarski/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sat 13 Jun</span><span class="st-times">21:00</span><a class="ctag" href="https://filmkoepel.nl/films/laffaire-bojarski/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">21:00</span><a class="ctag" href="https://filmhallen.nl/films/laffaire-bojarski/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Sun 14 Jun</span><span class="st-times">21:00</span><a class="ctag" href="https://filmkoepel.nl/films/laffaire-bojarski/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">21:00</span><a class="ctag" href="https://filmhallen.nl/films/laffaire-bojarski/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Mon 15 Jun</span><span class="st-times">21:00</span><a class="ctag" href="https://filmkoepel.nl/films/laffaire-bojarski/" target="_blank">Filmkoepel</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">21:00</span><a class="ctag" href="https://filmhallen.nl/films/laffaire-bojarski/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://m.media-amazon.com/images/M/MV5BOGE3ZjE2NjItMGIyZi00NjMxLWJiZWItMWJmMzZjOTgzZjJhXkEyXkFqcGc@._V1_SX300.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0254686/" target="_blank">La Pianiste</a> <span class="year">(2001)</span><span class="en-title">The Piano Teacher</span></h3>
+    <div class="badges"><span class="badge green">IMDb 7.5</span><span class="badge green">RT 75%</span></div>
+    <p class="plot">A young man romantically pursues his masochistic piano teacher.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Fri 12 Jun</span><span class="st-times">10:15</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/la-pianiste/1597509" target="_blank">Eye Filmmuseum</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://m.media-amazon.com/images/M/MV5BNTIyMzM3ZTYtMmNmYS00MTExLTk0ZmQtMzQ0MjJiOGU3YmZhXkEyXkFqcGc@._V1_SX300.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt38687903/" target="_blank">Paikar</a> <span class="year">(2025)</span></h3>
+    <div class="badges"><span class="badge gray" style="visibility:hidden">IMDb —</span><span class="badge gray" style="visibility:hidden">RT —</span></div>
+    <p class="plot">A son returns to face the silence of his father- once a mujahideen fighter, later a spiritual leader and poet -and through their fragile journey of reconnection, discovers that even the hardest hearts can hide the deepest longing ...</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Fri 12 Jun</span><span class="st-times">12:30</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/paikar/1632975" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sun 14 Jun</span><span class="st-times">10:15</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/paikar/1632975" target="_blank">Eye Filmmuseum</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/nsFqp6nL4WreueDVK1EQraepWwR.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0068441/" target="_blank">Cesar and Rosalie</a> <span class="year">(1972)</span></h3>
+    <div class="badges"><span class="badge green">RT 100%</span><span class="badge green">TMDb 7.2</span></div>
+    <p class="plot">A young woman becomes entangled with a successful businessman, but her ex tries to win her back, provoking intense jealousy that leads her to reconsider her choice. Ultimately, one man's actions force a resolution to her dilemma.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Fri 12 Jun</span><span class="st-times">17:00</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/cesar-et-rosalie/1636295" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sun 14 Jun</span><span class="st-times">12:30</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/cesar-et-rosalie/1636295" target="_blank">Eye Filmmuseum</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/r1x5JGpyqZU8PYhbs4UcrO1Xb6x.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0090605/" target="_blank">Aliens</a> <span class="year">(1986)</span></h3>
+    <div class="badges"><span class="badge green">IMDb 8.4</span><span class="badge green">RT 93%</span></div>
+    <p class="plot">Decades after surviving the Nostromo incident, Ellen Ripley is sent out to re-establish contact with a terraforming colony but finds herself battling the Alien Queen and her offspring.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Fri 12 Jun</span><span class="st-times">19:30</span><a class="ctag" href="https://filmkoepel.nl/films/aliens/" target="_blank">Filmkoepel</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/y0VDLox8ufaR4Ry1mFceELYJbKq.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0064451/" target="_blank">A Touch of Zen</a> <span class="year">(1970)</span></h3>
+    <div class="badges"><span class="badge green">RT 97%</span><span class="badge green">TMDb 7.6</span></div>
+    <p class="plot">Yang Hui-zhen, a mysterious princess on the run from corrupt government officials, is joined in her endeavors by skilled Buddhist monks and an unambitious painter named Gu Sheng-zhai.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Fri 12 Jun</span><span class="st-times">19:30</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/a-touch-of-zen/1640429" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sun 14 Jun</span><span class="st-times">15:00</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/a-touch-of-zen/1640429" target="_blank">Eye Filmmuseum</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/2QXpzBMJJtmH7JvVf0ZzENvgc1o.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0037017/" target="_blank">Lifeboat</a> <span class="year">(1944)</span></h3>
+    <div class="badges"><span class="badge green">RT 90%</span><span class="badge green">TMDb 7.4</span></div>
+    <p class="plot">During World War II, a small group of survivors is stranded in a lifeboat together after the ship they were traveling on is destroyed by a German U-boat.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sat 13 Jun</span><span class="st-times">14:00</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/lifeboat/1631847" target="_blank">Eye Filmmuseum</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/hTirV44jiLh6NqdiB6jtxPsDIoG.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt32565993/" target="_blank">The Sheep Detectives</a> <span class="year">(2026)</span></h3>
+    <div class="badges"><span class="badge green">RT 95%</span><span class="badge green">TMDb 7.6</span></div>
+    <p class="plot">George Hardy is a shepherd who reads detective novels to his beloved sheep every night, assuming they can't possibly understand. But when a mysterious incident disrupts life on the farm, the sheep realize they must become the detectives. As they follow the clues and investigate human suspects, they prove that even sheep can be brilliant crime-solvers.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">14:15</span><a class="ctag" href="https://filmhallen.nl/films/the-sheep-detectives/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">14:15</span><a class="ctag" href="https://filmhallen.nl/films/the-sheep-detectives/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/x1EVgOjZ4gfnRTFSZIsr1UoAx0W.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0060635/" target="_blank">Dragon Inn</a> <span class="year">(1967)</span></h3>
+    <div class="badges"><span class="badge green">RT 100%</span><span class="badge green">TMDb 7.4</span></div>
+    <p class="plot">China, year 1457. The Minister of Defense is executed, and his children are sentenced to exile by order of the tyrannical Tsao. Fearful of future revenge from the young people, Tsao sends cruel soldiers to murder them, but a brave group of swordsmen can change the course of the battle at the Dragon Inn.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sat 13 Jun</span><span class="st-times">16:15</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/dragon-inn/1640432" target="_blank">Eye Filmmuseum</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/fNkl7o1VQQqy1nEX9x56CDHULmr.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0097108/" target="_blank">The Cook, the Thief, His Wife & Her Lover</a> <span class="year">(1989)</span></h3>
+    <div class="badges"><span class="badge green">RT 87%</span><span class="badge green">TMDb 7.3</span></div>
+    <p class="plot">When churlish mobster Albert Spica acquires an upscale French restaurant in London, he dines there nightly, effectively scaring off the clientele with his bad manners. His wife, Georgina, is especially disgusted by him, and soon begins an affair with regular guest Michael. Despite their best efforts to keep it secret, Spica learns about their trysts, and he plots a terrible revenge.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">18:30</span><a class="ctag" href="https://filmhallen.nl/films/de-keuze-van-harry-cook-thief-his-wife-her-lover/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/sv7D4vlfIH25lNjQYoXzoOFCYaz.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0246578/" target="_blank">Donnie Darko</a> <span class="year">(2001)</span></h3>
+    <div class="badges"><span class="badge green">RT 88%</span><span class="badge green">TMDb 7.8</span></div>
+    <p class="plot">After narrowly escaping a bizarre accident, a troubled teenager is plagued by visions of a large bunny rabbit that manipulates him to commit a series of crimes.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sat 13 Jun</span><span class="st-times">21:00</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/donnie-darko/1597485" target="_blank">Eye Filmmuseum</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/6v1zYh2FKOYVddY5pCQhd4PO9uX.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0090756/" target="_blank">Blue Velvet</a> <span class="year">(1986)</span></h3>
+    <div class="badges"><span class="badge green">RT 91%</span><span class="badge green">TMDb 7.6</span></div>
+    <p class="plot">The discovery of a severed human ear found in a field leads a young man on an investigation related to a beautiful, mysterious nightclub singer and a group of psychopathic criminals who have kidnapped her child.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">21:15</span><a class="ctag" href="https://filmhallen.nl/films/blue-velvet/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">18:30</span><a class="ctag" href="https://filmhallen.nl/films/blue-velvet/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/rZDPbPTFwuKgr5b9jixGFNYkGYt.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0084707/" target="_blank">Sophie's Choice</a> <span class="year">(1982)</span></h3>
+    <div class="badges"><span class="badge green">RT 75%</span><span class="badge green">TMDb 7.3</span></div>
+    <p class="plot">Stingo, a young writer, moves to Brooklyn in 1947 to begin work on his first novel. As he becomes friendly with Sophie and her lover Nathan, he learns that she is a Holocaust survivor. Flashbacks reveal her harrowing story, from pre-war prosperity to Auschwitz. In the present, Sophie and Nathan's relationship increasingly unravels as Stingo grows closer to Sophie and Nathan's fragile mental state becomes ever more apparent.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">15:15</span><a class="ctag" href="https://filmhallen.nl/films/sophies-choice/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/nSxDa3M9aMvGVLoItzWTepQ5h5d.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0211915/" target="_blank">Amélie</a> <span class="year">(2001)</span></h3>
+    <div class="badges"><span class="badge green">RT 90%</span><span class="badge green">TMDb 7.9</span></div>
+    <p class="plot">At a tiny Parisian café, the adorable yet painfully shy Amélie accidentally discovers a gift for helping others. Soon Amelie is spending her days as a matchmaker, guardian angel, and all-around do-gooder. But when she bumps into a handsome stranger, will she find the courage to become the star of her very own love story?</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sun 14 Jun</span><span class="st-times">18:30</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/le-fabuleux-destin-damelie-poulain/1597488" target="_blank">Eye Filmmuseum</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/7Bjd8kfmDSOzpmhySpEhkUyK2oH.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0095016/" target="_blank">Die Hard</a> <span class="year">(1988)</span></h3>
+    <div class="badges"><span class="badge green">RT 94%</span><span class="badge green">TMDb 7.8</span></div>
+    <p class="plot">High above the city of L.A. a team of terrorists has seized a building, taken hostages, and declared war. One man has manages to escape... An off-duty cop hiding somewhere inside. He's alone, tired... and the only chance anyone has got.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">21:05</span><a class="ctag" href="https://filmhallen.nl/films/die-hard/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/nkucKciFGSRalw6dJtsglWqOXMC.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0098258/" target="_blank">Say Anything...</a> <span class="year">(1989)</span></h3>
+    <div class="badges"><span class="badge green">RT 98%</span><span class="badge green">TMDb 7.0</span></div>
+    <p class="plot">Average student and eternal optimist Lloyd Dobler seeks to capture the heart of Diane Court, a beautiful but unattainable valedictorian classmate. He surprises just about everyone - including himself - when she returns the sentiment. However, Diane's divorced, over-protective father soon begins to disapprove of the match, and Lloyd realises that it's going to take more than just the power of love to conquer all.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">18:30</span><a class="ctag" href="https://filmhallen.nl/films/say-anything/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/jMYqoM60clzYIQriM1wYXXBjU3O.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0093509/" target="_blank">Matewan</a> <span class="year">(1987)</span></h3>
+    <div class="badges"><span class="badge green">RT 94%</span><span class="badge green">TMDb 7.4</span></div>
+    <p class="plot">Filmed in the coal country of West Virginia, "Matewan" celebrates labor organizing in the context of a 1920s work stoppage. Union organizer, Joe Kenehan, a scab named "Few Clothes" Johnson and a sympathetic mayor and police chief heroically fight the power represented by a coal company and Matewan's vested interests so that justice and workers' rights need not take a back seat to squalid working conditions, exploitation and the bottom line.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">20:45</span><a class="ctag" href="https://filmhallen.nl/films/matewan/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/hVIKyTK13AvOGv7ICmJjK44DTzp.jpg" alt="" loading="lazy"></div>
+  <div class="body">
+    <h3><a href="https://www.imdb.com/title/tt0053291/" target="_blank">Some Like It Hot</a> <span class="year">(1959)</span></h3>
+    <div class="badges"><span class="badge green">RT 95%</span><span class="badge green">TMDb 8.1</span></div>
+    <p class="plot">In Prohibition-era Chicago, musicians Joe and Jerry witness a mob hit, and flee the state in an all-female band disguised as Josephine and Daphne, but further complications set in.</p>
+    <div class="showtimes"><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Mon 15 Jun</span><span class="st-times">21:00</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/some-like-it-hot/1630001" target="_blank">Eye Filmmuseum</a></div></div>
+  </div>
+</div></div>
+
+
+<details>
+  <summary>Misc (11 films)</summary>
+  <div class="grid"><div class="card">
+  <div class="thumb"></div>
+  <div class="body">
+    <h3>Sukkwan Island</h3>
+    <div class="badges"><span class="badge gray">not in OMDb</span></div>
+    
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">11:15</span><a class="ctag" href="https://filmhallen.nl/films/sukkwan-island/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">11:15</span><a class="ctag" href="https://filmhallen.nl/films/sukkwan-island/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sat 13 Jun</span><span class="st-times">10:45</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/sukkwan-island/1633130" target="_blank">Eye Filmmuseum</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"></div>
+  <div class="body">
+    <h3>Truly Naked</h3>
+    <div class="badges"><span class="badge gray">not in OMDb</span></div>
+    
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">11:45</span><a class="ctag" href="https://filmhallen.nl/films/truly-naked/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">11:45</span><a class="ctag" href="https://filmhallen.nl/films/truly-naked/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"></div>
+  <div class="body">
+    <h3>Dandelion’s Odyssey</h3>
+    <div class="badges"><span class="badge gray">not in OMDb</span></div>
+    
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">12:00</span><a class="ctag" href="https://filmhallen.nl/films/dandelions-odyssey/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">12:00</span><a class="ctag" href="https://filmhallen.nl/films/dandelions-odyssey/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"></div>
+  <div class="body">
+    <h3>Solomamma</h3>
+    <div class="badges"><span class="badge gray">not in OMDb</span></div>
+    
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Tue 9 Jun</span><span class="st-times">13:45</span><a class="ctag" href="https://filmhallen.nl/films/solomamma/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Wed 10 Jun</span><span class="st-times">13:45</span><a class="ctag" href="https://filmhallen.nl/films/solomamma/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Thu 11 Jun</span><span class="st-times">11:15</span><a class="ctag" href="https://filmhallen.nl/films/solomamma/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Fri 12 Jun</span><span class="st-times">11:15</span><a class="ctag" href="https://filmhallen.nl/films/solomamma/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sat 13 Jun</span><span class="st-times">11:15</span><a class="ctag" href="https://filmhallen.nl/films/solomamma/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Sun 14 Jun</span><span class="st-times">11:15</span><a class="ctag" href="https://filmhallen.nl/films/solomamma/" target="_blank">Filmhallen</a></div><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Mon 15 Jun</span><span class="st-times">11:15</span><a class="ctag" href="https://filmhallen.nl/films/solomamma/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"></div>
+  <div class="body">
+    <h3>The Super Mario Galaxy Movie (NL)</h3>
+    <div class="badges"><span class="badge gray">not in OMDb</span></div>
+    
+    <div class="showtimes"><div class="st-row" data-cinema="Filmkoepel"><span class="st-date">Wed 10 Jun</span><span class="st-times">14:00</span><a class="ctag" href="https://filmkoepel.nl/films/the-super-mario-galaxy-movie-nl/" target="_blank">Filmkoepel</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"></div>
+  <div class="body">
+    <h3>Mama'ku – Van Jakarta tot de Molukken</h3>
+    <div class="badges"><span class="badge gray">not in OMDb</span></div>
+    
+    <div class="showtimes"><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Thu 11 Jun</span><span class="st-times">15:50</span><a class="ctag" href="https://www.schuur.nl/film/mamaku-van-jakarta-tot-de-molukken" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Fri 12 Jun</span><span class="st-times">14:50</span><a class="ctag" href="https://www.schuur.nl/film/mamaku-van-jakarta-tot-de-molukken" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Sat 13 Jun</span><span class="st-times">13:00</span><a class="ctag" href="https://www.schuur.nl/film/mamaku-van-jakarta-tot-de-molukken" target="_blank">Filmschuur</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"></div>
+  <div class="body">
+    <h3>Amsterdam Wildlife by Night</h3>
+    <div class="badges"><span class="badge gray">not in OMDb</span></div>
+    
+    <div class="showtimes"><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Fri 12 Jun</span><span class="st-times">10:30 · 18:45</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/amsterdam-wildlife-by-night/1632508" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sat 13 Jun</span><span class="st-times">10:30 · 19:00</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/amsterdam-wildlife-by-night/1632508" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sun 14 Jun</span><span class="st-times">15:00</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/amsterdam-wildlife-by-night/1632508" target="_blank">Eye Filmmuseum</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"></div>
+  <div class="body">
+    <h3>Brazil</h3>
+    <div class="badges"><span class="badge gray">not in OMDb</span></div>
+    
+    <div class="showtimes"><div class="st-row" data-cinema="Filmhallen"><span class="st-date">Fri 12 Jun</span><span class="st-times">21:00</span><a class="ctag" href="https://filmhallen.nl/films/brazil/" target="_blank">Filmhallen</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"></div>
+  <div class="body">
+    <h3>Bluey in de Bios: Spelen met je vriendjes</h3>
+    <div class="badges"><span class="badge gray">not in OMDb</span></div>
+    
+    <div class="showtimes"><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Sat 13 Jun</span><span class="st-times">13:15</span><a class="ctag" href="https://www.schuur.nl/film/bluey-in-de-bios-spelen-met-je-vriendjes" target="_blank">Filmschuur</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"></div>
+  <div class="body">
+    <h3>Splish Splash Forever!</h3>
+    <div class="badges"><span class="badge gray">not in OMDb</span></div>
+    
+    <div class="showtimes"><div class="st-row" data-cinema="Filmschuur"><span class="st-date">Sat 13 Jun</span><span class="st-times">14:30</span><a class="ctag" href="https://www.schuur.nl/film/splish-splash-forever" target="_blank">Filmschuur</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sat 13 Jun</span><span class="st-times">14:30</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/splish-splash-forever/1645496" target="_blank">Eye Filmmuseum</a></div><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sun 14 Jun</span><span class="st-times">13:00</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/splish-splash-forever/1645496" target="_blank">Eye Filmmuseum</a></div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="thumb"></div>
+  <div class="body">
+    <h3>Moeder Suriname - Mama Sranan</h3>
+    <div class="badges"><span class="badge gray">not in OMDb</span></div>
+    
+    <div class="showtimes"><div class="st-row" data-cinema="Eye Filmmuseum"><span class="st-date">Sun 14 Jun</span><span class="st-times">10:45</span><a class="ctag" href="https://www.eyefilm.nl/en/whats-on/moeder-suriname-mama-sranan/1603659" target="_blank">Eye Filmmuseum</a></div></div>
+  </div>
+</div></div>
+</details>
+<script>
+(function(){
+  const btns = document.querySelectorAll('.cf-btn');
+  if (!btns.length) return;
+  btns.forEach(btn => btn.addEventListener('click', function(){
+    this.classList.toggle('active');
+    filter();
+  }));
+  function filter(){
+    const active = new Set([...btns].filter(b => b.classList.contains('active')).map(b => b.dataset.cinema));
+    const all = active.size === btns.length;
+    document.querySelectorAll('.st-row[data-cinema]').forEach(row => {
+      row.style.display = all || active.has(row.dataset.cinema) ? '' : 'none';
+    });
+    document.querySelectorAll('.card').forEach(card => {
+      const rows = card.querySelectorAll('.st-row[data-cinema]');
+      if (!rows.length) return;
+      card.style.display = [...rows].some(r => r.style.display !== 'none') ? '' : 'none';
+    });
+    const det = document.querySelector('details');
+    if (det) {
+      const any = [...det.querySelectorAll('.card')].some(c => c.style.display !== 'none');
+      det.style.display = any ? '' : 'none';
+    }
+    const grid = document.querySelector('.grid');
+    if (grid) {
+      const visible = [...grid.querySelectorAll('.card')].filter(c => c.style.display !== 'none').length;
+      const el = document.getElementById('film-count');
+      if (el) el.textContent = visible;
+    }
+  }
+})();
+</script>
+</body>
+</html>
