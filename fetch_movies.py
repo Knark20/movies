@@ -273,8 +273,10 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
     key = f"{title}|||{year or ''}"
     if cache is not None and key in cache:
         cached = cache[key]
-        # Re-fetch if found but missing country (needed for dual-title display)
-        if not cached.get("found") or "country" in cached:
+        # Only use cache for successful lookups that have country populated.
+        # "not found" results are never cached permanently — a transient failure
+        # (rate limit, network blip) would otherwise block the film forever.
+        if cached.get("found") and "country" in cached:
             return cached
 
     if not OMDB_KEY:
