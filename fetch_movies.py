@@ -930,7 +930,7 @@ body {{
 header {{ margin-bottom: 0.75rem; border-bottom: 1px solid #1e293b; padding-bottom: 1rem; }}
 h1 {{ font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }}
 .meta-top {{ color: var(--muted); font-size: 0.85rem; margin-top: 0.3rem; }}
-.meta {{ position: fixed; bottom: 0; left: 0; right: 0; color: var(--muted); font-size: 0.8rem; text-align: center; padding: 0.4rem 1rem; background: var(--bg); border-top: 1px solid #1e293b; z-index: 10; }}
+.meta {{ color: var(--muted); font-size: 0.8rem; text-align: center; padding: 2rem 1rem 1rem; }}
 .section-label {{
   font-size: 0.72rem; text-transform: uppercase; letter-spacing: .1em;
   color: var(--muted); margin: 1.5rem 0 0.75rem;
