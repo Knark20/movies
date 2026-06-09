@@ -601,18 +601,27 @@ def scrape_lab111() -> list[dict]:
         BASE = "https://www.lab111.nl"
         resp = SESSION.get(f"{BASE}/programma/", timeout=20)
         soup = BeautifulSoup(resp.content, "html.parser")
+        _PAREN_SUFFIX = re.compile(r"\s*\([^)]*\)\s*$")
         title_to_url: dict[str, str] = {}
         for block in soup.find_all("div", class_="col-md-8"):
             title_el = block.find("h2", class_="hidemobile")
             if not title_el:
                 continue
-            raw = title_el.get_text(strip=True).lower()
+            raw = title_el.get_text(strip=True)
             link_el = block.find("a", href=re.compile(r"/movie/"))
             if link_el:
                 href = link_el["href"]
-                title_to_url[raw] = href if href.startswith("http") else BASE + href
+                url = href if href.startswith("http") else BASE + href
+                title_to_url[raw.lower()] = url
+                # Also index by base title without trailing descriptor, e.g.
+                # "Spoorloos (4K Restoration)" → "spoorloos" so Cineville's plain
+                # title still matches.
+                stripped = _PAREN_SUFFIX.sub("", raw).strip().lower()
+                if stripped != raw.lower():
+                    title_to_url.setdefault(stripped, url)
         for film in films:
-            url = title_to_url.get(film["title"].lower())
+            key = film["title"].lower()
+            url = title_to_url.get(key) or title_to_url.get(_PAREN_SUFFIX.sub("", film["title"]).strip().lower())
             if url:
                 film["link"] = url
     except Exception:
