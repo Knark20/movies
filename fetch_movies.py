@@ -384,6 +384,7 @@ def _parse_nl_date(date_str: str) -> tuple[str, str]:
 _CINEVILLE_API        = "https://api.cineville.nl"
 _FILMHALLEN_VENUE_ID  = "500f04ec-a10e-4f92-a8e6-d7f98b3b2d51"
 _FILMKOEPEL_VENUE_ID  = "f030b2cb-60d6-45ae-b1e0-719ed1c104f1"
+_RIALTO_VU_API        = "https://rialtofilm.nl/feed/nl/program/7/28"
 
 
 def _scrape_cineville_venue(venue_id: str, films_base_url: str) -> list[dict]:
@@ -608,6 +609,46 @@ def scrape_lab111() -> list[dict]:
 def scrape_filmhallen() -> list[dict]:
     """Filmhallen Amsterdam — via Cineville API (api.cineville.nl)."""
     return _scrape_cineville_venue(_FILMHALLEN_VENUE_ID, "https://filmhallen.nl/films")
+
+
+def scrape_rialto_vu() -> list[dict]:
+    """
+    Rialto VU Amsterdam — rialtofilm.nl/feed/nl/program/7/28 JSON API.
+    Returns 28 days of screenings; filtered to next 7 days.
+    Dates and times are already in Amsterdam local time.
+    """
+    resp = SESSION.get(_RIALTO_VU_API, timeout=15)
+    resp.raise_for_status()
+    days = resp.json()
+
+    today   = datetime.now().strftime("%Y-%m-%d")
+    cutoff  = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
+
+    films_map: dict[int, dict] = {}
+    for day in days:
+        date_str = day.get("date", "")
+        if not date_str or date_str < today or date_str > cutoff:
+            continue
+        for prog in day.get("programs", []):
+            film_id  = prog.get("film_id")
+            title    = prog.get("title", "").strip()
+            link     = prog.get("film_url", "")
+            time_str = prog.get("starts_at", "")
+            if not film_id or not title or not time_str:
+                continue
+            try:
+                dt = datetime.strptime(date_str, "%Y-%m-%d")
+                date_disp = f"{dt.strftime('%a')} {dt.day} {dt.strftime('%b')}"
+            except ValueError:
+                continue
+            if film_id not in films_map:
+                films_map[film_id] = {"title": title, "link": link, "showtimes": []}
+            films_map[film_id]["showtimes"].append({
+                "date":      date_disp,
+                "time":      time_str,
+                "sort_date": date_str,
+            })
+    return list(films_map.values())
 
 
 # ── Filter ─────────────────────────────────────────────────────────────────────
@@ -933,6 +974,7 @@ CINEMAS: dict = {
     "Eye Filmmuseum Amsterdam": scrape_eye,
     "Filmhallen Amsterdam":     scrape_filmhallen,
     "Lab111 Amsterdam":         scrape_lab111,
+    "Rialto VU Amsterdam":      scrape_rialto_vu,
 }
 
 CINEMA_SHORT: dict[str, str] = {
@@ -941,6 +983,7 @@ CINEMA_SHORT: dict[str, str] = {
     "Eye Filmmuseum Amsterdam": "Eye Filmmuseum",
     "Filmhallen Amsterdam":     "Filmhallen",
     "Lab111 Amsterdam":         "Lab111",
+    "Rialto VU Amsterdam":      "Rialto VU",
 }
 
 
@@ -960,6 +1003,9 @@ def main() -> None:
         except Exception as exc:
             print(f"failed ({exc})")
             films = []
+
+        cutoff = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
+        films = [f for f in films if any(st.get("sort_date", "") <= cutoff for st in f.get("showtimes", []))]
 
         for film in films:
             film["ratings"] = get_ratings(film["title"], cache=cache)
