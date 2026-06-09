@@ -877,8 +877,7 @@ def generate_html(movies_by_cinema: dict) -> str:
     EXCLUDED: set[str] = set()
     merged = {k: d for k, d in merged.items() if k not in EXCLUDED and d["showtimes"]}
 
-    good = [(titles[k], d) for k, d in merged.items() if d["r"].get("found") and d["r"].get("poster") and passes_filter(d["r"])]
-    misc = [(titles[k], d) for k, d in merged.items() if not d["r"].get("found") or not d["r"].get("poster")]
+    good = [(titles[k], d) for k, d in merged.items() if passes_filter(d["r"])]
 
     def earliest_showtime(item: tuple) -> str:
         candidates = [
@@ -889,16 +888,9 @@ def generate_html(movies_by_cinema: dict) -> str:
         return min(candidates) if candidates else "9999-99-99T99:99"
 
     good.sort(key=earliest_showtime)
-    misc.sort(key=earliest_showtime)
 
     def cards_html(lst: list) -> str:
         return "\n".join(_card(t, d["r"], d["links"], d.get("showtimes", []), d.get("lang_tag", "")) for t, d in lst)
-
-    misc_section = f"""
-<details>
-  <summary>Misc ({len(misc)} film{"s" if len(misc) != 1 else ""})</summary>
-  <div class="grid">{cards_html(misc)}</div>
-</details>""" if misc else ""
 
     all_cinemas = sorted({st["cinema"] for d in merged.values() for st in d["showtimes"] if st.get("cinema")})
     filter_btns = "".join(f'<button class="cf-btn active" data-cinema="{c}">{c}</button>' for c in all_cinemas)
@@ -988,15 +980,6 @@ h3 a:hover {{ text-decoration: underline; }}
   background: #1e3a5f; color: #93c5fd; text-decoration: none; white-space: nowrap;
 }}
 .ctag:hover {{ background: #1d4ed8; color: #fff; }}
-details {{ margin-top: 2.5rem; }}
-summary {{
-  cursor: pointer; color: var(--muted); font-size: 0.85rem;
-  padding: 0.5rem 0; user-select: none; list-style: none;
-}}
-summary::before {{ content: "▶  "; font-size: 0.7rem; }}
-details[open] summary::before {{ content: "▼  "; }}
-summary:hover {{ color: var(--text); }}
-details[open] > summary {{ margin-bottom: 0.75rem; }}
 .empty {{ color: var(--muted); font-style: italic; font-size: 0.9rem; }}
 .cinema-filters {{ display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }}
 .cf-btn {{
@@ -1020,7 +1003,6 @@ details[open] > summary {{ margin-bottom: 0.75rem; }}
 {filter_html}
 {"<p class='empty'>No films found.</p>" if not good else f'<div class="grid">{cards_html(good)}</div>'}
 
-{misc_section}
 <footer class="meta">Generated {now}</footer>
 <script>
 (function(){{
@@ -1050,11 +1032,6 @@ details[open] > summary {{ margin-bottom: 0.75rem; }}
       const langOk   = !engOnly || hasSubs || enOnly;
       card.style.display = cinemaOk && langOk ? '' : 'none';
     }});
-    const det = document.querySelector('details');
-    if (det) {{
-      const any = [...det.querySelectorAll('.card')].some(c => c.style.display !== 'none');
-      det.style.display = any ? '' : 'none';
-    }}
     const grid = document.querySelector('.grid');
     if (grid) {{
       const visible = [...grid.querySelectorAll('.card')].filter(c => c.style.display !== 'none').length;
