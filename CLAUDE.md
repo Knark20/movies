@@ -30,7 +30,7 @@ Free OMDb API key: https://www.omdbapi.com/apikey.aspx
 | Filmschuur Haarlem | schuur.nl/agenda/ | DFS state machine over `h3` date → `span` time → `h4` title |
 | Eye Filmmuseum Amsterdam | eyefilm.nl/en/whats-on | GraphQL API at `service.eyefilm.nl/graphql` — returns all individual screenings with dates/times; filters to `productionType="1"` (films only, excludes events/talks/closures) |
 | Filmhallen Amsterdam | filmhallen.nl | Via Cineville API — see below |
-| Lab111 Amsterdam | lab111.nl/programma/ | Schedule embedded in page HTML; each film block has `h2.hidemobile` title, `/movie/` page link, and ticket anchors with datetime text "do 18 jun 20:30" |
+| Lab111 Amsterdam | lab111.nl/programma/ | **Cineville API** for showtimes + subtitle detection; programma page HTML also scraped to resolve `/movie/{slug}/` links (Cineville slugs differ from Lab111's own slug format). Film blocks: `div.col-md-8` → `h2.hidemobile` title + `a[href*=/movie/]` link. |
 
 ## Cineville API (Filmhallen + Filmkoepel)
 

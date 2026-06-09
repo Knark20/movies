@@ -593,11 +593,32 @@ def scrape_eye() -> list[dict]:
 
 
 def scrape_lab111() -> list[dict]:
-    """Lab111 Amsterdam — via Cineville API (api.cineville.nl).
-    Subtitle info (attributes.subtitles) is populated per-event by Lab111.
-    Links point to the general programma page — Cineville slugs don't reliably
-    match Lab111's own /movie/{slug}/ URL structure."""
-    return _scrape_cineville_venue(_LAB111_VENUE_ID, "https://www.lab111.nl/programma/")
+    """Lab111 Amsterdam — Cineville API for showtimes/subtitles, HTML scrape for /movie/ links."""
+    films = _scrape_cineville_venue(_LAB111_VENUE_ID, "https://www.lab111.nl/programma/")
+
+    # Scrape the programma page to resolve actual /movie/{slug}/ links (Cineville slugs differ)
+    try:
+        BASE = "https://www.lab111.nl"
+        resp = SESSION.get(f"{BASE}/programma/", timeout=20)
+        soup = BeautifulSoup(resp.content, "html.parser")
+        title_to_url: dict[str, str] = {}
+        for block in soup.find_all("div", class_="col-md-8"):
+            title_el = block.find("h2", class_="hidemobile")
+            if not title_el:
+                continue
+            raw = title_el.get_text(strip=True).lower()
+            link_el = block.find("a", href=re.compile(r"/movie/"))
+            if link_el:
+                href = link_el["href"]
+                title_to_url[raw] = href if href.startswith("http") else BASE + href
+        for film in films:
+            url = title_to_url.get(film["title"].lower())
+            if url:
+                film["link"] = url
+    except Exception:
+        pass
+
+    return films
 
 
 def scrape_filmhallen() -> list[dict]:
