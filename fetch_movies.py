@@ -776,7 +776,7 @@ def _card(title: str, r: dict, links: dict, showtimes: list[dict] = None, lang_t
         elif tmdb is not None:
             badges_html = _badge("TMDb", tmdb, IMDB_MIN) + _badge("RT", None, RT_MIN)
         else:
-            badges_html = _badge("IMDb", None, IMDB_MIN) + _badge("RT", None, RT_MIN)
+            badges_html = ""
     else:
         badges_html = '<span class="badge gray">not in OMDb</span>'
     lang = r.get("language") or ""
