@@ -877,7 +877,8 @@ def generate_html(movies_by_cinema: dict) -> str:
     EXCLUDED: set[str] = set()
     merged = {k: d for k, d in merged.items() if k not in EXCLUDED and d["showtimes"]}
 
-    good = [(titles[k], d) for k, d in merged.items() if passes_filter(d["r"])]
+    good = [(titles[k], d) for k, d in merged.items() if d["r"].get("found") and d["r"].get("poster") and passes_filter(d["r"])]
+    misc = [(titles[k], d) for k, d in merged.items() if not d["r"].get("found") or not d["r"].get("poster")]
 
     def earliest_showtime(item: tuple) -> str:
         candidates = [
@@ -888,6 +889,12 @@ def generate_html(movies_by_cinema: dict) -> str:
         return min(candidates) if candidates else "9999-99-99T99:99"
 
     good.sort(key=earliest_showtime)
+
+    if misc:
+        print("\nMisc (no poster/OMDb entry):")
+        for t, d in sorted(misc, key=earliest_showtime):
+            cinemas = ", ".join(sorted({st["cinema"] for st in d["showtimes"] if st.get("cinema")}))
+            print(f"  - {t} [{cinemas}]")
 
     def cards_html(lst: list) -> str:
         return "\n".join(_card(t, d["r"], d["links"], d.get("showtimes", []), d.get("lang_tag", "")) for t, d in lst)
