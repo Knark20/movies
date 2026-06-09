@@ -918,7 +918,9 @@ def generate_html(movies_by_cinema: dict) -> str:
     def cards_html(lst: list) -> str:
         return "\n".join(_card(t, d["r"], d["links"], d.get("showtimes", []), d.get("lang_tag", "")) for t, d in lst)
 
-    all_cinemas = sorted({st["cinema"] for d in merged.values() for st in d["showtimes"] if st.get("cinema")})
+    _last = {"Filmkoepel Haarlem", "Filmschuur Haarlem"}
+    all_cinemas = sorted({st["cinema"] for d in merged.values() for st in d["showtimes"] if st.get("cinema")},
+                         key=lambda c: (c in _last, c))
     filter_btns = "".join(f'<button class="cf-btn active" data-cinema="{c}">{c}</button>' for c in all_cinemas)
     lang_btn    = '<span class="filter-sep"></span><button class="cf-btn lf-btn" id="lang-filter">All languages</button>'
     filter_html = f'<div class="cinema-filters">{filter_btns}{lang_btn}</div>' if len(all_cinemas) > 1 else ""
