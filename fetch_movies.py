@@ -130,7 +130,8 @@ def _omdb_parse(data: dict, fallback_title: str) -> dict:
         "poster":  data.get("Poster") if data.get("Poster") != "N/A" else None,
         "plot":    data.get("Plot"),
         "imdb_id": data.get("imdbID"),
-        "country": data.get("Country"),
+        "country":  data.get("Country"),
+        "language": data.get("Language"),
     }
 
 
@@ -288,7 +289,7 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
         # Only use cache for successful lookups that have country populated.
         # "not found" results are never cached permanently — a transient failure
         # (rate limit, network blip) would otherwise block the film forever.
-        if cached.get("found") and "country" in cached:
+        if cached.get("found") and "country" in cached and "language" in cached:
             # Backfill original_title for non-English films cached before that field was added
             if (TMDB_TOKEN
                     and not _is_english_only(cached.get("country", ""))
@@ -447,7 +448,7 @@ def _scrape_cineville_venue(venue_id: str, films_base_url: str) -> list[dict]:
         slug  = prod.get("slug",  "").strip()
         if not title:
             continue
-        link = f"{films_base_url}/{slug}/" if slug else films_base_url
+        link = f"{films_base_url}/{slug}/" if (slug and not films_base_url.endswith("/")) else films_base_url
         showtimes: list[dict] = []
         for ev in evs:
             start = ev.get("startDate", "")
@@ -584,8 +585,10 @@ def scrape_eye() -> list[dict]:
 
 def scrape_lab111() -> list[dict]:
     """Lab111 Amsterdam — via Cineville API (api.cineville.nl).
-    Subtitle info (attributes.subtitles) is populated per-event by Lab111."""
-    return _scrape_cineville_venue(_LAB111_VENUE_ID, "https://www.lab111.nl/movie")
+    Subtitle info (attributes.subtitles) is populated per-event by Lab111.
+    Links point to the general programma page — Cineville slugs don't reliably
+    match Lab111's own /movie/{slug}/ URL structure."""
+    return _scrape_cineville_venue(_LAB111_VENUE_ID, "https://www.lab111.nl/programma/")
 
 
 def scrape_filmhallen() -> list[dict]:
@@ -717,6 +720,9 @@ def _card(title: str, r: dict, links: dict, showtimes: list[dict] = None, lang_t
         badges_html = '<span class="badge gray">not in OMDb</span>'
     if lang_tag:
         badges_html += f'<span class="badge ltag">{lang_tag}</span>'
+    lang = r.get("language") or ""
+    if not lang_tag and lang and lang.lower().startswith("english"):
+        badges_html += '<span class="badge ltag">EN</span>'
     st_html = _showtimes_html(showtimes or [], links)
     return f"""<div class="card">
   <div class="thumb">{poster_html}</div>
