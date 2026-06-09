@@ -90,6 +90,18 @@ _QUALIFIER_RE = re.compile(
 def _strip_qualifiers(title: str) -> str:
     return _QUALIFIER_RE.sub('', title).strip() or title
 
+_LANG_SUFFIX_RE = re.compile(r'\s*[-–]\s*(eng(?:lish)?\s+subs?|no\s+subs?)\s*$', re.IGNORECASE)
+
+def _extract_lang_tag(title: str) -> tuple[str, str | None]:
+    """Strip language suffix from title; return (clean_title, tag_or_None).
+    'eng subs' → tag='eng subs'; 'no subs' → tag=None (no badge shown)."""
+    m = _LANG_SUFFIX_RE.search(title)
+    if not m:
+        return title, None
+    clean = title[:m.start()].strip()
+    tag = "eng subs" if "eng" in m.group(1).lower() else None
+    return clean, tag
+
 
 _NOT_FOUND: dict = {"found": False, "imdb": None, "rt": None}
 
@@ -700,7 +712,7 @@ def _badge(label: str, value, threshold) -> str:
     return f'<span class="badge {cls}">{label} {disp}</span>'
 
 
-def _card(title: str, r: dict, links: dict, showtimes: list[dict] = None) -> str:
+def _card(title: str, r: dict, links: dict, showtimes: list[dict] = None, lang_tag: str = "") -> str:
     poster_html = f'<img src="{r["poster"]}" alt="" loading="lazy">' if r.get("poster") else ""
     en_title = r.get("title", title) if r.get("found") else title
     orig_title = r.get("original_title") or ""
@@ -733,6 +745,8 @@ def _card(title: str, r: dict, links: dict, showtimes: list[dict] = None) -> str
             badges_html = _badge("IMDb", None, IMDB_MIN) + _badge("RT", None, RT_MIN)
     else:
         badges_html = '<span class="badge gray">not in OMDb</span>'
+    if lang_tag:
+        badges_html += f'<span class="badge ltag">{lang_tag}</span>'
     st_html = _showtimes_html(showtimes or [], links)
     return f"""<div class="card">
   <div class="thumb">{poster_html}</div>
@@ -747,15 +761,16 @@ def _card(title: str, r: dict, links: dict, showtimes: list[dict] = None) -> str
 
 def generate_html(movies_by_cinema: dict) -> str:
     # Merge films that play in multiple cinemas into one entry
-    merged: dict[str, dict] = {}  # keyed by title.lower() for case-insensitive dedup
+    merged: dict[str, dict] = {}  # keyed by (title.lower(), lang_tag) for case-insensitive dedup
     titles: dict[str, str] = {}   # key → first-seen display title
     for cinema, films in movies_by_cinema.items():
         short = CINEMA_SHORT.get(cinema, cinema)
         for f in films:
             t = f["title"]
-            key = _strip_qualifiers(t).lower()
+            lang_tag = f.get("lang_tag") or ""
+            key = (_strip_qualifiers(t).lower(), lang_tag)
             if key not in merged:
-                merged[key] = {"r": f["ratings"], "cinemas": [], "links": {}, "showtimes": []}
+                merged[key] = {"r": f["ratings"], "cinemas": [], "links": {}, "showtimes": [], "lang_tag": lang_tag}
                 titles[key] = _strip_qualifiers(t)
             if short not in merged[key]["cinemas"]:
                 merged[key]["cinemas"].append(short)
@@ -763,14 +778,16 @@ def generate_html(movies_by_cinema: dict) -> str:
             for st in f.get("showtimes", []):
                 merged[key]["showtimes"].append({**st, "cinema": short})
 
-    # Second pass: merge entries that resolved to the same IMDb ID under different titles
-    imdb_to_key: dict[str, str] = {}
+    # Second pass: merge entries that resolved to the same IMDb ID under different titles.
+    # Include lang_tag in the dedup key so eng-subs and non-eng-subs versions stay separate.
+    imdb_to_key: dict[tuple, tuple] = {}
     for key, d in list(merged.items()):
         imdb_id = d["r"].get("imdb_id")
         if not imdb_id:
             continue
-        if imdb_id in imdb_to_key:
-            primary = imdb_to_key[imdb_id]
+        dedup_key = (imdb_id, d.get("lang_tag", ""))
+        if dedup_key in imdb_to_key:
+            primary = imdb_to_key[dedup_key]
             for c in d["cinemas"]:
                 if c not in merged[primary]["cinemas"]:
                     merged[primary]["cinemas"].append(c)
@@ -779,7 +796,7 @@ def generate_html(movies_by_cinema: dict) -> str:
             del merged[key]
             del titles[key]
         else:
-            imdb_to_key[imdb_id] = key
+            imdb_to_key[dedup_key] = key
 
     now_str = datetime.now().strftime("%Y-%m-%dT%H:%M")
     cutoff_str = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%dT23:59")
@@ -807,7 +824,7 @@ def generate_html(movies_by_cinema: dict) -> str:
     misc.sort(key=earliest_showtime)
 
     def cards_html(lst: list) -> str:
-        return "\n".join(_card(t, d["r"], d["links"], d.get("showtimes", [])) for t, d in lst)
+        return "\n".join(_card(t, d["r"], d["links"], d.get("showtimes", []), d.get("lang_tag", "")) for t, d in lst)
 
     misc_section = f"""
 <details>
@@ -882,6 +899,7 @@ h3 a:hover {{ text-decoration: underline; }}
 .badge.green {{ background: var(--green-bg); color: var(--green); }}
 .badge.red   {{ background: var(--red-bg);   color: var(--red); }}
 .badge.gray  {{ background: var(--surface);  color: var(--gray); border: 1px solid #334155; }}
+.badge.ltag  {{ background: #1e3a5f; color: #93c5fd; font-weight: 400; }}
 .plot {{
   font-size: 0.78rem; color: var(--muted); line-height: 1.45;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -1008,6 +1026,7 @@ def main() -> None:
         films = [f for f in films if any(st.get("sort_date", "") <= cutoff for st in f.get("showtimes", []))]
 
         for film in films:
+            film["title"], film["lang_tag"] = _extract_lang_tag(film["title"])
             film["ratings"] = get_ratings(film["title"], cache=cache)
             r = film["ratings"]
             if r.get("found"):
