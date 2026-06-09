@@ -2,7 +2,7 @@ name: Generate movies page
 
 on:
   schedule:
-    - cron: '0 10 * * *'  # 12:00 Amsterdam (CEST = UTC+2)
+    - cron: '0 6 * * *'  # 08:00 Amsterdam (CEST = UTC+2)
   workflow_dispatch:
 
 jobs:
