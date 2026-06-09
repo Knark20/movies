@@ -123,6 +123,22 @@ _LANG_CODES: dict[str, str] = {
     "flemish": "NL",
 }
 
+_COUNTRY_LANG: dict[str, str] = {
+    "usa": "EN", "united states": "EN", "uk": "EN", "united kingdom": "EN",
+    "australia": "EN", "canada": "EN", "ireland": "EN", "new zealand": "EN",
+    "netherlands": "NL", "belgium": "NL", "france": "FR", "germany": "DE",
+    "austria": "DE", "switzerland": "DE", "italy": "IT", "spain": "ES",
+    "mexico": "ES", "argentina": "ES", "colombia": "ES", "chile": "ES",
+    "portugal": "PT", "brazil": "PT", "russia": "RU", "japan": "JA",
+    "china": "ZH", "taiwan": "ZH", "hong kong": "ZH", "south korea": "KO",
+    "korea": "KO", "sweden": "SV", "norway": "NO", "denmark": "DA",
+    "finland": "FI", "poland": "PL", "turkey": "TR", "israel": "HE",
+    "iran": "FA", "india": "HI", "greece": "EL", "czech republic": "CS",
+    "czechia": "CS", "romania": "RO", "hungary": "HU", "ukraine": "UK",
+    "thailand": "TH", "vietnam": "VI", "indonesia": "ID", "egypt": "AR",
+    "morocco": "AR", "saudi arabia": "AR",
+}
+
 def _is_english_only(country: str) -> bool:
     if not country:
         return True
@@ -780,17 +796,23 @@ def _card(title: str, r: dict, links: dict, showtimes: list[dict] = None, lang_t
     else:
         badges_html = '<span class="badge gray">not in OMDb</span>'
     lang = r.get("language") or ""
-    if lang:
-        seen: set[str] = set()
-        codes: list[str] = []
+    seen: set[str] = set()
+    codes: list[str] = []
+    if lang and lang.upper() != "N/A":
         for lang_name in (x.strip().lower() for x in lang.split(",")):
             code = _LANG_CODES.get(lang_name)
             if code and code not in seen:
                 seen.add(code)
                 codes.append(code)
-        if codes:
-            attr = ' data-en="1"' if "EN" in codes else ""
-            badges_html += f'<span class="badge ltag"{attr}>{" · ".join(codes)}</span>'
+    if not codes:
+        for c in (x.strip().lower() for x in (r.get("country") or "").split(",")):
+            code = _COUNTRY_LANG.get(c)
+            if code and code not in seen:
+                seen.add(code)
+                codes.append(code)
+    if codes:
+        attr = ' data-en="1"' if "EN" in codes else ""
+        badges_html += f'<span class="badge ltag"{attr}>{" · ".join(codes)}</span>'
     if lang_tag:
         badges_html += f'<span class="badge subs">{lang_tag}</span>'
     st_html = _showtimes_html(showtimes or [], links)
