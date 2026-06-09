@@ -810,7 +810,8 @@ def generate_html(movies_by_cinema: dict) -> str:
 
     all_cinemas = sorted({st["cinema"] for d in merged.values() for st in d["showtimes"] if st.get("cinema")})
     filter_btns = "".join(f'<button class="cf-btn active" data-cinema="{c}">{c}</button>' for c in all_cinemas)
-    filter_html = f'<div class="cinema-filters">{filter_btns}</div>' if len(all_cinemas) > 1 else ""
+    lang_btn    = '<span class="filter-sep"></span><button class="cf-btn lf-btn" id="lang-filter">All languages</button>'
+    filter_html = f'<div class="cinema-filters">{filter_btns}{lang_btn}</div>' if len(all_cinemas) > 1 else ""
 
     now   = datetime.now().strftime("%d %b %Y, %H:%M")
     total = len(merged)
@@ -911,6 +912,9 @@ details[open] > summary {{ margin-bottom: 0.75rem; }}
 }}
 .cf-btn.active {{ background: #1e3a5f; color: #93c5fd; border-color: #1d4ed8; }}
 @media (hover: hover) {{ .cf-btn:hover {{ border-color: var(--accent); color: var(--text); }} }}
+.filter-sep {{ width: 1px; background: #334155; align-self: stretch; margin: 0 0.25rem; }}
+.lf-btn {{ background: var(--red-bg); color: var(--red); border-color: #7f1d1d; }}
+.lf-btn.active {{ background: #1e3a5f; color: #93c5fd; border-color: #1d4ed8; }}
 </style>
 </head>
 <body>
@@ -925,22 +929,29 @@ details[open] > summary {{ margin-bottom: 0.75rem; }}
 {misc_section}
 <script>
 (function(){{
-  const btns = document.querySelectorAll('.cf-btn');
-  if (!btns.length) return;
-  btns.forEach(btn => btn.addEventListener('click', function(){{
+  const cinemaBtns = document.querySelectorAll('.cf-btn[data-cinema]');
+  const langBtn    = document.getElementById('lang-filter');
+  cinemaBtns.forEach(btn => btn.addEventListener('click', function(){{
     this.classList.toggle('active');
     filter();
   }}));
+  if (langBtn) langBtn.addEventListener('click', function(){{
+    this.classList.toggle('active');
+    this.textContent = this.classList.contains('active') ? 'English only' : 'All languages';
+    filter();
+  }});
   function filter(){{
-    const active = new Set([...btns].filter(b => b.classList.contains('active')).map(b => b.dataset.cinema));
-    const all = active.size === btns.length;
+    const active = new Set([...cinemaBtns].filter(b => b.classList.contains('active')).map(b => b.dataset.cinema));
+    const allCinemas = !cinemaBtns.length || active.size === cinemaBtns.length;
+    const engOnly = langBtn && langBtn.classList.contains('active');
     document.querySelectorAll('.st-row[data-cinema]').forEach(row => {{
-      row.style.display = all || active.has(row.dataset.cinema) ? '' : 'none';
+      row.style.display = allCinemas || active.has(row.dataset.cinema) ? '' : 'none';
     }});
     document.querySelectorAll('.card').forEach(card => {{
       const rows = card.querySelectorAll('.st-row[data-cinema]');
-      if (!rows.length) return;
-      card.style.display = [...rows].some(r => r.style.display !== 'none') ? '' : 'none';
+      const cinemaOk = !rows.length || [...rows].some(r => r.style.display !== 'none');
+      const langOk   = !engOnly || !!card.querySelector('.badge.ltag');
+      card.style.display = cinemaOk && langOk ? '' : 'none';
     }});
     const det = document.querySelector('details');
     if (det) {{
