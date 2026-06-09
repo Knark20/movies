@@ -875,7 +875,7 @@ details[open] > summary {{ margin-bottom: 0.75rem; }}
   cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
 }}
 .cf-btn.active {{ background: #1e3a5f; color: #93c5fd; border-color: #1d4ed8; }}
-.cf-btn:hover {{ border-color: var(--accent); color: var(--text); }}
+@media (hover: hover) {{ .cf-btn:hover {{ border-color: var(--accent); color: var(--text); }} }}
 </style>
 </head>
 <body>
