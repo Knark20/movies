@@ -923,7 +923,7 @@ details[open] > summary {{ margin-bottom: 0.75rem; }}
 @media (hover: hover) {{ .cf-btn:hover {{ border-color: var(--accent); color: var(--text); }} }}
 .filter-sep {{ width: 1px; background: #334155; align-self: stretch; margin: 0 0.25rem; }}
 .lf-btn {{ background: var(--red-bg); color: var(--red); border-color: #7f1d1d; }}
-.lf-btn.active {{ background: #1e3a5f; color: #93c5fd; border-color: #1d4ed8; }}
+.lf-btn.active {{ background: var(--red-bg); color: var(--red); border-color: #7f1d1d; }}
 </style>
 </head>
 <body>
