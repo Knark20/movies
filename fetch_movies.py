@@ -957,6 +957,7 @@ h1 {{ font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }}
   background: var(--surface); border-radius: 10px;
   display: flex; overflow: hidden;
   transition: box-shadow 0.15s, transform 0.15s;
+  touch-action: pan-y;
 }}
 .card:hover {{
   box-shadow: 0 0 0 1px var(--accent);
@@ -1051,7 +1052,7 @@ h3 a:hover {{ text-decoration: underline; }}
       const enBadge  = card.querySelector('.badge.ltag[data-en="1"]');
       const enOnly   = enBadge && enBadge.textContent.trim() === 'EN';
       const langOk   = !engOnly || hasSubs || enOnly;
-      card.style.display = cinemaOk && langOk ? '' : 'none';
+      card.style.display = cinemaOk && langOk && !card.classList.contains('dismissed') ? '' : 'none';
     }});
     const grid = document.querySelector('.grid');
     if (grid) {{
@@ -1059,6 +1060,47 @@ h3 a:hover {{ text-decoration: underline; }}
       document.querySelectorAll('.film-count').forEach(el => el.textContent = visible);
     }}
   }}
+  // Swipe right to dismiss (mobile)
+  document.querySelectorAll('.card').forEach(function(card) {{
+    var startX, startY, dx = 0, locked = null;
+    card.addEventListener('touchstart', function(e) {{
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      dx = 0; locked = null;
+      card.style.transition = 'none';
+    }}, {{passive: true}});
+    card.addEventListener('touchmove', function(e) {{
+      dx = e.touches[0].clientX - startX;
+      var dy = e.touches[0].clientY - startY;
+      if (locked === null) {{
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        locked = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+      }}
+      if (locked !== 'h' || dx <= 0) return;
+      card.style.transform = 'translateX(' + dx + 'px)';
+      card.style.opacity = String(Math.max(0, 1 - dx / 150));
+    }}, {{passive: true}});
+    card.addEventListener('touchend', function() {{
+      if (locked === 'h' && dx > 80) {{
+        card.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
+        card.style.transform = 'translateX(110vw)';
+        card.style.opacity = '0';
+        setTimeout(function() {{
+          card.classList.add('dismissed');
+          card.style.cssText = 'display:none';
+          var grid = document.querySelector('.grid');
+          if (grid) {{
+            var cnt = [...grid.querySelectorAll('.card')].filter(function(c) {{ return c.style.display !== 'none'; }}).length;
+            document.querySelectorAll('.film-count').forEach(function(el) {{ el.textContent = cnt; }});
+          }}
+        }}, 260);
+      }} else if (locked === 'h') {{
+        card.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+        card.style.transform = '';
+        card.style.opacity = '';
+      }}
+    }});
+  }});
 }})();
 </script>
 </body>
