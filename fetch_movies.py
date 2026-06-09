@@ -277,6 +277,13 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
         # "not found" results are never cached permanently — a transient failure
         # (rate limit, network blip) would otherwise block the film forever.
         if cached.get("found") and "country" in cached:
+            # Backfill original_title for non-English films cached before that field was added
+            if (TMDB_TOKEN
+                    and not _is_english_only(cached.get("country", ""))
+                    and "original_title" not in cached):
+                tmdb = _tmdb_fetch(cached.get("title") or title, cached.get("year"))
+                if tmdb.get("original_title"):
+                    cached["original_title"] = tmdb["original_title"]
             return cached
 
     if not OMDB_KEY:
