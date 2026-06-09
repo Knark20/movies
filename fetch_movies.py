@@ -324,10 +324,11 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
         # (rate limit, network blip) would otherwise block the film forever.
         if cached.get("found") and "country" in cached and "language" in cached:
             # Backfill fields that were added after this entry was cached
-            stale_poster  = cached.get("poster", "").startswith("https://m.media-amazon.com")
-            needs_orig    = TMDB_TOKEN and not _is_english_only(cached.get("country", "")) and "original_title" not in cached
+            stale_poster    = cached.get("poster", "").startswith("https://m.media-amazon.com")
+            needs_orig      = TMDB_TOKEN and not _is_english_only(cached.get("country", "")) and "original_title" not in cached
             needs_tmdb_lang = TMDB_TOKEN and cached.get("language") in (None, "N/A", "") and cached.get("country") in (None, "N/A", "") and "tmdb_language" not in cached
-            if TMDB_TOKEN and (needs_orig or stale_poster or needs_tmdb_lang):
+            needs_plot      = TMDB_TOKEN and not cached.get("plot")
+            if TMDB_TOKEN and (needs_orig or stale_poster or needs_tmdb_lang or needs_plot):
                 tmdb = _tmdb_fetch(cached.get("title") or title, cached.get("year"))
                 updated = False
                 if needs_orig and tmdb.get("original_title"):
@@ -338,6 +339,9 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
                     updated = True
                 if needs_tmdb_lang and tmdb.get("original_language"):
                     cached["tmdb_language"] = tmdb["original_language"]
+                    updated = True
+                if needs_plot and tmdb.get("plot"):
+                    cached["plot"] = tmdb["plot"]
                     updated = True
                 if updated:
                     save_cache(cache)
@@ -407,6 +411,8 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
             result["tmdb_rating"] = tmdb["tmdb_rating"]
         if tmdb.get("original_title") and not result.get("original_title"):
             result["original_title"] = tmdb["original_title"]
+        if tmdb.get("plot") and not result.get("plot"):
+            result["plot"] = tmdb["plot"]
         if tmdb.get("original_language") and result.get("language") in (None, "N/A", ""):
             result["tmdb_language"] = tmdb["original_language"]
         # If OMDb has no RT score, try fetching it directly from RT
