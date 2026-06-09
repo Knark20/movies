@@ -109,6 +109,20 @@ _NOT_FOUND: dict = {"found": False, "imdb": None, "rt": None}
 _ENGLISH_COUNTRIES = {"usa", "uk", "united states", "united kingdom", "australia", "canada", "ireland", "new zealand"}
 _CJK_RE = re.compile(r'[⺀-鿿豈-﫿가-힣؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]')
 
+
+_LANG_CODES: dict[str, str] = {
+    "english": "EN", "dutch": "NL", "french": "FR", "german": "DE",
+    "italian": "IT", "spanish": "ES", "portuguese": "PT", "russian": "RU",
+    "japanese": "JA", "mandarin": "ZH", "cantonese": "ZH", "chinese": "ZH",
+    "korean": "KO", "arabic": "AR", "swedish": "SV", "norwegian": "NO",
+    "danish": "DA", "finnish": "FI", "polish": "PL", "turkish": "TR",
+    "hebrew": "HE", "persian": "FA", "hindi": "HI", "greek": "EL",
+    "czech": "CS", "romanian": "RO", "hungarian": "HU", "ukrainian": "UK",
+    "thai": "TH", "vietnamese": "VI", "indonesian": "ID", "malay": "MS",
+    "bengali": "BN", "tamil": "TA", "urdu": "UR", "catalan": "CA",
+    "flemish": "NL",
+}
+
 def _is_english_only(country: str) -> bool:
     if not country:
         return True
@@ -758,11 +772,17 @@ def _card(title: str, r: dict, links: dict, showtimes: list[dict] = None, lang_t
             badges_html = _badge("IMDb", None, IMDB_MIN) + _badge("RT", None, RT_MIN)
     else:
         badges_html = '<span class="badge gray">not in OMDb</span>'
-    if lang_tag:
-        badges_html += f'<span class="badge ltag">{lang_tag}</span>'
     lang = r.get("language") or ""
-    if not lang_tag and lang and lang.lower().startswith("english"):
-        badges_html += '<span class="badge ltag">EN</span>'
+    if lang:
+        seen: set[str] = set()
+        for lang_name in (x.strip().lower() for x in lang.split(",")):
+            code = _LANG_CODES.get(lang_name)
+            if code and code not in seen:
+                seen.add(code)
+                attr = ' data-en="1"' if code == "EN" else ""
+                badges_html += f'<span class="badge ltag"{attr}>{code}</span>'
+    if lang_tag:
+        badges_html += f'<span class="badge subs">{lang_tag}</span>'
     st_html = _showtimes_html(showtimes or [], links)
     return f"""<div class="card">
   <div class="thumb">{poster_html}</div>
@@ -878,7 +898,7 @@ body {{
 }}
 header {{ margin-bottom: 2rem; border-bottom: 1px solid #1e293b; padding-bottom: 1.5rem; }}
 h1 {{ font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }}
-.meta {{ color: var(--muted); font-size: 0.85rem; margin-top: 0.4rem; }}
+.meta {{ position: fixed; bottom: 0; left: 0; right: 0; color: var(--muted); font-size: 0.8rem; text-align: center; padding: 0.4rem 1rem; background: var(--bg); border-top: 1px solid #1e293b; z-index: 10; }}
 .section-label {{
   font-size: 0.72rem; text-transform: uppercase; letter-spacing: .1em;
   color: var(--muted); margin: 1.5rem 0 0.75rem;
@@ -917,6 +937,7 @@ h3 a:hover {{ text-decoration: underline; }}
 .badge.red   {{ background: var(--red-bg);   color: var(--red); }}
 .badge.gray  {{ background: var(--surface);  color: var(--gray); border: 1px solid #334155; }}
 .badge.ltag  {{ background: #1e3a5f; color: #93c5fd; font-weight: 400; }}
+.badge.subs  {{ background: var(--red-bg); color: var(--red); font-weight: 400; }}
 .plot {{
   font-size: 0.78rem; color: var(--muted); line-height: 1.45;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -960,13 +981,13 @@ details[open] > summary {{ margin-bottom: 0.75rem; }}
 <body>
 <header>
   <h1>Now Playing</h1>
-  <p class="meta">Generated {now}&nbsp;&nbsp;·&nbsp;&nbsp;<span id="film-count">{good_count}</span> films found</p>
 </header>
 
 {filter_html}
 {"<p class='empty'>No films found.</p>" if not good else f'<div class="grid">{cards_html(good)}</div>'}
 
 {misc_section}
+<footer class="meta">Generated {now}&nbsp;&nbsp;·&nbsp;&nbsp;<span id="film-count">{good_count}</span> films found</footer>
 <script>
 (function(){{
   const cinemaBtns = document.querySelectorAll('.cf-btn[data-cinema]');
@@ -990,7 +1011,9 @@ details[open] > summary {{ margin-bottom: 0.75rem; }}
     document.querySelectorAll('.card').forEach(card => {{
       const rows = card.querySelectorAll('.st-row[data-cinema]');
       const cinemaOk = !rows.length || [...rows].some(r => r.style.display !== 'none');
-      const langOk   = !engOnly || !!card.querySelector('.badge.ltag');
+      const hasSubs   = !!card.querySelector('.badge.subs');
+      const enOnly   = !!card.querySelector('.badge.ltag[data-en="1"]') && !card.querySelector('.badge.ltag:not([data-en])');
+      const langOk   = !engOnly || hasSubs || enOnly;
       card.style.display = cinemaOk && langOk ? '' : 'none';
     }});
     const det = document.querySelector('details');
