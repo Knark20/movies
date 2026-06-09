@@ -782,12 +782,15 @@ def _card(title: str, r: dict, links: dict, showtimes: list[dict] = None, lang_t
     lang = r.get("language") or ""
     if lang:
         seen: set[str] = set()
+        codes: list[str] = []
         for lang_name in (x.strip().lower() for x in lang.split(",")):
             code = _LANG_CODES.get(lang_name)
             if code and code not in seen:
                 seen.add(code)
-                attr = ' data-en="1"' if code == "EN" else ""
-                badges_html += f'<span class="badge ltag"{attr}>{code}</span>'
+                codes.append(code)
+        if codes:
+            attr = ' data-en="1"' if "EN" in codes else ""
+            badges_html += f'<span class="badge ltag"{attr}>{" · ".join(codes)}</span>'
     if lang_tag:
         badges_html += f'<span class="badge subs">{lang_tag}</span>'
     st_html = _showtimes_html(showtimes or [], links)
