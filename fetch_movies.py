@@ -327,7 +327,7 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
             stale_poster    = cached.get("poster", "").startswith("https://m.media-amazon.com")
             needs_orig      = TMDB_TOKEN and not _is_english_only(cached.get("country", "")) and "original_title" not in cached
             needs_tmdb_lang = TMDB_TOKEN and cached.get("language") in (None, "N/A", "") and cached.get("country") in (None, "N/A", "") and "tmdb_language" not in cached
-            needs_plot      = TMDB_TOKEN and not cached.get("plot")
+            needs_plot      = TMDB_TOKEN and cached.get("plot") in (None, "", "N/A")
             if TMDB_TOKEN and (needs_orig or stale_poster or needs_tmdb_lang or needs_plot):
                 tmdb = _tmdb_fetch(cached.get("title") or title, cached.get("year"))
                 updated = False
@@ -411,7 +411,7 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
             result["tmdb_rating"] = tmdb["tmdb_rating"]
         if tmdb.get("original_title") and not result.get("original_title"):
             result["original_title"] = tmdb["original_title"]
-        if tmdb.get("plot") and not result.get("plot"):
+        if tmdb.get("plot") and result.get("plot") in (None, "", "N/A"):
             result["plot"] = tmdb["plot"]
         if tmdb.get("original_language") and result.get("language") in (None, "N/A", ""):
             result["tmdb_language"] = tmdb["original_language"]
