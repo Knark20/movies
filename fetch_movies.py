@@ -396,6 +396,7 @@ def _parse_nl_date(date_str: str) -> tuple[str, str]:
 _CINEVILLE_API        = "https://api.cineville.nl"
 _FILMHALLEN_VENUE_ID  = "500f04ec-a10e-4f92-a8e6-d7f98b3b2d51"
 _FILMKOEPEL_VENUE_ID  = "f030b2cb-60d6-45ae-b1e0-719ed1c104f1"
+_LAB111_VENUE_ID      = "3c7714e3-515b-4e1a-9ae5-dfb5bf73d575"
 _RIALTO_VU_API        = "https://rialtofilm.nl/feed/nl/program/7/28"
 
 
@@ -424,15 +425,17 @@ def _scrape_cineville_venue(venue_id: str, films_base_url: str) -> list[dict]:
         data = resp.json()
         all_events.extend(data["_embedded"]["events"])
 
-    # Group events by production, skip hidden and non-film
-    prod_groups: dict[str, list[dict]] = {}
+    # Group events by (production, lang_tag), skip hidden and non-film
+    prod_groups: dict[tuple, list[dict]] = {}
     for ev in all_events:
         if ev.get("productionTypeId") != "film" or ev.get("isHidden"):
             continue
-        prod_groups.setdefault(ev["productionId"], []).append(ev)
+        subs = ev.get("attributes", {}).get("subtitles", [])
+        lang_tag = "eng subs" if "en" in subs else ""
+        prod_groups.setdefault((ev["productionId"], lang_tag), []).append(ev)
 
     films: list[dict] = []
-    for prod_id, evs in prod_groups.items():
+    for (prod_id, lang_tag), evs in prod_groups.items():
         try:
             pr = SESSION.get(f"{_CINEVILLE_API}/productions/{prod_id}", timeout=10)
             if pr.status_code != 200:
@@ -462,7 +465,10 @@ def _scrape_cineville_venue(venue_id: str, films_base_url: str) -> list[dict]:
             except ValueError:
                 continue
         if showtimes:
-            films.append({"title": title, "link": link, "showtimes": showtimes})
+            film: dict = {"title": title, "link": link, "showtimes": showtimes}
+            if lang_tag:
+                film["lang_tag"] = lang_tag
+            films.append(film)
     return films
 
 
@@ -577,45 +583,9 @@ def scrape_eye() -> list[dict]:
 
 
 def scrape_lab111() -> list[dict]:
-    """
-    Lab111 Amsterdam — programma: lab111.nl/programma/
-    Schedule is embedded in the page: each film block has an h2.hidemobile title,
-    a /movie/{slug}/ page link, and ticket anchors with text "do 18 jun 20:30".
-    """
-    BASE = "https://www.lab111.nl"
-    resp = SESSION.get(f"{BASE}/programma/", timeout=20)
-    resp.raise_for_status()
-    soup = BeautifulSoup(resp.content, "html.parser")
-
-    _DT_RE = re.compile(r"^(\w{2})\s+(\d{1,2})\s+(\w{3})\s+(\d{2}:\d{2})$")
-
-    films: list[dict] = []
-    for block in soup.find_all("div", class_="col-md-8"):
-        title_el = block.find("h2", class_="hidemobile")
-        if not title_el:
-            continue
-        title = title_el.get_text(strip=True)
-        if not title:
-            continue
-        film_link_el = block.find("a", href=re.compile(r"/movie/"))
-        link = film_link_el["href"] if film_link_el else f"{BASE}/programma/"
-        showtimes: list[dict] = []
-        for a in block.find_all("a", href=True):
-            if "/show/" not in a["href"]:
-                continue
-            text = " ".join(a.get_text(strip=True).split())  # normalise whitespace
-            m = _DT_RE.match(text)
-            if not m:
-                continue
-            date_str = f"{m.group(1)} {m.group(2)} {m.group(3)}"
-            time_str = m.group(4)
-            en_date, sort_date = _parse_nl_date(date_str)
-            if not sort_date:
-                continue
-            showtimes.append({"date": en_date, "time": time_str, "sort_date": sort_date})
-        if showtimes:
-            films.append({"title": title, "link": link, "showtimes": showtimes})
-    return films
+    """Lab111 Amsterdam — via Cineville API (api.cineville.nl).
+    Subtitle info (attributes.subtitles) is populated per-event by Lab111."""
+    return _scrape_cineville_venue(_LAB111_VENUE_ID, "https://www.lab111.nl/movie")
 
 
 def scrape_filmhallen() -> list[dict]:
@@ -1026,7 +996,10 @@ def main() -> None:
         films = [f for f in films if any(st.get("sort_date", "") <= cutoff for st in f.get("showtimes", []))]
 
         for film in films:
-            film["title"], film["lang_tag"] = _extract_lang_tag(film["title"])
+            clean_title, suffix_tag = _extract_lang_tag(film["title"])
+            film["title"] = clean_title
+            if "lang_tag" not in film:
+                film["lang_tag"] = suffix_tag
             film["ratings"] = get_ratings(film["title"], cache=cache)
             r = film["ratings"]
             if r.get("found"):
