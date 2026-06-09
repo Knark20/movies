@@ -24,6 +24,7 @@ import sys
 import time
 import unicodedata
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Optional
@@ -315,6 +316,14 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
             result = search
         elif not result["found"]:
             result = search
+
+    # Strip " - Descriptor" suffix (e.g. "Coffee and Cigarettes - Jim Jarmusch Revisited")
+    if not result["found"] and " - " in lookup:
+        short_lookup = lookup.split(" - ")[0].strip()
+        if short_lookup != lookup:
+            result = _omdb_fetch(short_lookup, year)
+            if not result["found"]:
+                result = _omdb_search(_normalize_title(short_lookup)) or result
 
     # TMDb fallback — when OMDb has nothing, use TMDb rating + metadata as primary source
     tmdb_already_fetched: Optional[dict] = None
@@ -813,7 +822,7 @@ def generate_html(movies_by_cinema: dict) -> str:
     lang_btn    = '<span class="filter-sep"></span><button class="cf-btn lf-btn" id="lang-filter">All languages</button>'
     filter_html = f'<div class="cinema-filters">{filter_btns}{lang_btn}</div>' if len(all_cinemas) > 1 else ""
 
-    now   = datetime.now().strftime("%d %b %Y, %H:%M")
+    now   = datetime.now(ZoneInfo("Europe/Amsterdam")).strftime("%d %b %Y, %H:%M")
     total = len(merged)
     good_count = len(good)
 
