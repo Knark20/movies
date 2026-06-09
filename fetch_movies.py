@@ -1035,7 +1035,8 @@ h3 a:hover {{ text-decoration: underline; }}
       const rows = card.querySelectorAll('.st-row[data-cinema]');
       const cinemaOk = !rows.length || [...rows].some(r => r.style.display !== 'none');
       const hasSubs   = !!card.querySelector('.badge.subs');
-      const enOnly   = !!card.querySelector('.badge.ltag[data-en="1"]') && !card.querySelector('.badge.ltag:not([data-en])');
+      const enBadge  = card.querySelector('.badge.ltag[data-en="1"]');
+      const enOnly   = enBadge && enBadge.textContent.trim() === 'EN';
       const langOk   = !engOnly || hasSubs || enOnly;
       card.style.display = cinemaOk && langOk ? '' : 'none';
     }});
