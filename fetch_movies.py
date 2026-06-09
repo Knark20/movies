@@ -116,7 +116,7 @@ _LANG_CODES: dict[str, str] = {
     "japanese": "JA", "mandarin": "ZH", "cantonese": "ZH", "chinese": "ZH",
     "korean": "KO", "arabic": "AR", "swedish": "SV", "norwegian": "NO",
     "danish": "DA", "finnish": "FI", "polish": "PL", "turkish": "TR",
-    "hebrew": "HE", "persian": "FA", "hindi": "HI", "greek": "EL",
+    "hebrew": "HE", "persian": "FA", "dari": "FA", "pashto": "PS", "hindi": "HI", "greek": "EL",
     "czech": "CS", "romanian": "RO", "hungarian": "HU", "ukrainian": "UK",
     "thai": "TH", "vietnamese": "VI", "indonesian": "ID", "malay": "MS",
     "bengali": "BN", "tamil": "TA", "urdu": "UR", "catalan": "CA",
