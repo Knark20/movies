@@ -246,6 +246,8 @@ def _tmdb_fetch(title: str, year: Optional[str] = None) -> dict:
             out["year"] = top["release_date"][:4]
         if top.get("overview"):
             out["plot"] = top["overview"]
+        if top.get("original_language"):
+            out["original_language"] = top["original_language"]
         vote_avg   = top.get("vote_average")
         vote_count = top.get("vote_count", 0)
         if vote_avg and vote_count >= 10:
@@ -322,9 +324,10 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
         # (rate limit, network blip) would otherwise block the film forever.
         if cached.get("found") and "country" in cached and "language" in cached:
             # Backfill fields that were added after this entry was cached
-            stale_poster = cached.get("poster", "").startswith("https://m.media-amazon.com")
-            needs_orig   = TMDB_TOKEN and not _is_english_only(cached.get("country", "")) and "original_title" not in cached
-            if TMDB_TOKEN and (needs_orig or stale_poster):
+            stale_poster  = cached.get("poster", "").startswith("https://m.media-amazon.com")
+            needs_orig    = TMDB_TOKEN and not _is_english_only(cached.get("country", "")) and "original_title" not in cached
+            needs_tmdb_lang = TMDB_TOKEN and cached.get("language") in (None, "N/A", "") and cached.get("country") in (None, "N/A", "") and "tmdb_language" not in cached
+            if TMDB_TOKEN and (needs_orig or stale_poster or needs_tmdb_lang):
                 tmdb = _tmdb_fetch(cached.get("title") or title, cached.get("year"))
                 updated = False
                 if needs_orig and tmdb.get("original_title"):
@@ -332,6 +335,9 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
                     updated = True
                 if stale_poster and tmdb.get("poster"):
                     cached["poster"] = tmdb["poster"]
+                    updated = True
+                if needs_tmdb_lang and tmdb.get("original_language"):
+                    cached["tmdb_language"] = tmdb["original_language"]
                     updated = True
                 if updated:
                     save_cache(cache)
@@ -401,6 +407,8 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
             result["tmdb_rating"] = tmdb["tmdb_rating"]
         if tmdb.get("original_title") and not result.get("original_title"):
             result["original_title"] = tmdb["original_title"]
+        if tmdb.get("original_language") and result.get("language") in (None, "N/A", ""):
+            result["tmdb_language"] = tmdb["original_language"]
         # If OMDb has no RT score, try fetching it directly from RT
         if result.get("rt") is None:
             rt = _rt_fetch(result.get("title") or lookup, result.get("year"))
@@ -810,6 +818,10 @@ def _card(title: str, r: dict, links: dict, showtimes: list[dict] = None, lang_t
             if code and code not in seen:
                 seen.add(code)
                 codes.append(code)
+    if not codes and r.get("tmdb_language"):
+        code = r["tmdb_language"].upper()
+        if code not in seen:
+            codes.append(code)
     if codes:
         attr = ' data-en="1"' if "EN" in codes else ""
         badges_html += f'<span class="badge ltag"{attr}>{" · ".join(codes)}</span>'
