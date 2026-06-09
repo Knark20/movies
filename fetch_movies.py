@@ -903,8 +903,9 @@ body {{
   background: var(--bg); color: var(--text);
   padding: 2rem 1.5rem; max-width: 1280px; margin: 0 auto;
 }}
-header {{ margin-bottom: 2rem; border-bottom: 1px solid #1e293b; padding-bottom: 1.5rem; }}
+header {{ margin-bottom: 0.75rem; border-bottom: 1px solid #1e293b; padding-bottom: 1rem; }}
 h1 {{ font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }}
+.meta-top {{ color: var(--muted); font-size: 0.85rem; margin-top: 0.3rem; }}
 .meta {{ position: fixed; bottom: 0; left: 0; right: 0; color: var(--muted); font-size: 0.8rem; text-align: center; padding: 0.4rem 1rem; background: var(--bg); border-top: 1px solid #1e293b; z-index: 10; }}
 .section-label {{
   font-size: 0.72rem; text-transform: uppercase; letter-spacing: .1em;
@@ -988,13 +989,14 @@ details[open] > summary {{ margin-bottom: 0.75rem; }}
 <body>
 <header>
   <h1>Now Playing</h1>
+  <p class="meta-top"><span class="film-count">{good_count}</span> films found</p>
 </header>
 
 {filter_html}
 {"<p class='empty'>No films found.</p>" if not good else f'<div class="grid">{cards_html(good)}</div>'}
 
 {misc_section}
-<footer class="meta">Generated {now}&nbsp;&nbsp;·&nbsp;&nbsp;<span id="film-count">{good_count}</span> films found</footer>
+<footer class="meta">Generated {now}</footer>
 <script>
 (function(){{
   const cinemaBtns = document.querySelectorAll('.cf-btn[data-cinema]');
@@ -1031,8 +1033,7 @@ details[open] > summary {{ margin-bottom: 0.75rem; }}
     const grid = document.querySelector('.grid');
     if (grid) {{
       const visible = [...grid.querySelectorAll('.card')].filter(c => c.style.display !== 'none').length;
-      const el = document.getElementById('film-count');
-      if (el) el.textContent = visible;
+      document.querySelectorAll('.film-count').forEach(el => el.textContent = visible);
     }}
   }}
 }})();
