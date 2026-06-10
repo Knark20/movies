@@ -678,8 +678,7 @@ def scrape_lab111() -> list[dict]:
     except Exception:
         pass
 
-    # Drop films with no Lab111 movie page (Cineville-only listings)
-    return [f for f in films if "/movie/" in f.get("link", "")]
+    return films
 
 
 def scrape_filmhallen() -> list[dict]:
