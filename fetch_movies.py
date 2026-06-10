@@ -930,7 +930,7 @@ def generate_html(movies_by_cinema: dict) -> str:
     all_cinemas = sorted({st["cinema"] for d in merged.values() for st in d["showtimes"] if st.get("cinema")},
                          key=lambda c: (c in _last, c))
     filter_btns = "".join(f'<button class="cf-btn active" data-cinema="{c}">{c}</button>' for c in all_cinemas)
-    lang_btn    = '<span class="filter-sep"></span><button class="cf-btn lf-btn" id="lang-filter">All languages</button>'
+    lang_btn    = '<span class="filter-sep"></span><button class="cf-btn lf-btn" id="lang-filter">All</button>'
 
     _day_letters = "MTWTFSS"
     all_dates = sorted({st["sort_date"] for d in merged.values() for st in d["showtimes"] if st.get("sort_date")})
@@ -1071,7 +1071,7 @@ h3 a:hover {{ text-decoration: underline; }}
   }}));
   if (langBtn) langBtn.addEventListener('click', function(){{
     this.classList.toggle('active');
-    this.textContent = this.classList.contains('active') ? 'English only' : 'All languages';
+    this.textContent = this.classList.contains('active') ? 'EN' : 'All';
     filter();
   }});
   function nowAmsterdam() {{
