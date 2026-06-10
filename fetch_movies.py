@@ -935,14 +935,14 @@ def generate_html(movies_by_cinema: dict) -> str:
     _day_letters = "MTWTFSS"
     all_dates = sorted({st["sort_date"] for d in merged.values() for st in d["showtimes"] if st.get("sort_date")})
     day_btns  = "".join(
-        '<button class="cf-btn df-btn active" data-date="{sd}">{letter}</button>'.format(
+        '<button class="cf-btn df-btn" data-date="{sd}">{letter}</button>'.format(
             sd=sd,
             letter=_day_letters[datetime.strptime(sd, "%Y-%m-%d").weekday()],
         )
         for sd in all_dates
     )
     day_sep  = '<span class="filter-sep"></span>' if all_dates else ""
-    filter_html = f'<div class="cinema-filters">{filter_btns}{lang_btn}{day_sep}{day_btns}</div>' if len(all_cinemas) > 1 else ""
+    filter_html = f'<div class="cinema-filters">{filter_btns}{day_sep}{day_btns}{lang_btn}</div>' if len(all_cinemas) > 1 else ""
     day_filter_html = ""
 
     now   = datetime.now(ZoneInfo("Europe/Amsterdam")).strftime("%d %b %Y, %H:%M")
@@ -1040,8 +1040,8 @@ h3 a:hover {{ text-decoration: underline; }}
 .cf-btn.active {{ background: #1e3a5f; color: #93c5fd; border-color: #1d4ed8; }}
 @media (hover: hover) {{ .cf-btn:hover {{ border-color: var(--accent); color: var(--text); }} }}
 .filter-sep {{ width: 1px; background: #334155; align-self: stretch; margin: 0 0.25rem; }}
-.df-btn {{ padding: 4px 10px; }}
-.df-btn.active {{ background: #042f2e; color: #5eead4; border-color: #0d9488; }}
+.df-btn {{ padding: 4px 7px; }}
+.df-btn.active {{ background: #0f766e; color: #ccfbf1; border-color: #0f766e; }}
 .lf-btn {{ background: var(--red-bg); color: var(--red); border-color: #7f1d1d; }}
 .lf-btn.active {{ background: var(--red-bg); color: var(--red); border-color: #7f1d1d; }}
 </style>
@@ -1081,7 +1081,7 @@ h3 a:hover {{ text-decoration: underline; }}
     const active = new Set([...cinemaBtns].filter(b => b.classList.contains('active')).map(b => b.dataset.cinema));
     const allCinemas = !cinemaBtns.length || active.size === cinemaBtns.length;
     const activeDates = new Set([...dateBtns].filter(b => b.classList.contains('active')).map(b => b.dataset.date));
-    const allDates = !dateBtns.length || activeDates.size === dateBtns.length;
+    const allDates = !dateBtns.length || activeDates.size === 0;
     const engOnly = langBtn && langBtn.classList.contains('active');
     document.querySelectorAll('.st-row').forEach(row => {{
       const cOk = !row.dataset.cinema || allCinemas || active.has(row.dataset.cinema);
