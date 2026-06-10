@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Now Playing — 10 Jun 2026, 20:21</title>
+<title>Now Playing — 10 Jun 2026, 20:38</title>
 <style>
 :root {
   --bg: #0f172a; --surface: #1e293b; --accent: #60a5fa;
@@ -89,7 +89,7 @@ h3 a:hover { text-decoration: underline; }
 .cf-btn.active { background: #1e3a5f; color: #93c5fd; border-color: #1d4ed8; }
 @media (hover: hover) { .cf-btn:hover { border-color: var(--accent); color: var(--text); } }
 .filter-sep { width: 1px; background: #334155; align-self: stretch; margin: 0 0.25rem; }
-.df-btn { padding: 4px 7px; }
+.df-btn { padding: 4px 11px; }
 .df-btn.active { background: #0f766e; color: #ccfbf1; border-color: #0f766e; }
 .lf-btn { background: var(--red-bg); color: var(--red); border-color: #7f1d1d; }
 .lf-btn.active { background: var(--red-bg); color: var(--red); border-color: #7f1d1d; }
@@ -101,7 +101,7 @@ h3 a:hover { text-decoration: underline; }
   <p class="meta-top"><span class="film-count">71</span> films found</p>
 </header>
 
-<div class="cinema-filters"><button class="cf-btn active" data-cinema="Eye Filmmuseum">Eye Filmmuseum</button><button class="cf-btn active" data-cinema="Filmhallen">Filmhallen</button><button class="cf-btn active" data-cinema="Lab111">Lab111</button><button class="cf-btn active" data-cinema="Rialto VU">Rialto VU</button><button class="cf-btn active" data-cinema="Filmkoepel">Filmkoepel</button><button class="cf-btn active" data-cinema="Filmschuur">Filmschuur</button><span class="filter-sep"></span><button class="cf-btn df-btn" data-date="2026-06-10">W</button><button class="cf-btn df-btn" data-date="2026-06-11">T</button><button class="cf-btn df-btn" data-date="2026-06-12">F</button><button class="cf-btn df-btn" data-date="2026-06-13">S</button><button class="cf-btn df-btn" data-date="2026-06-14">S</button><button class="cf-btn df-btn" data-date="2026-06-15">M</button><button class="cf-btn df-btn" data-date="2026-06-16">T</button><button class="cf-btn df-btn" data-date="2026-06-17">W</button><span class="filter-sep"></span><button class="cf-btn lf-btn" id="lang-filter">All languages</button></div>
+<div class="cinema-filters"><button class="cf-btn active" data-cinema="Eye Filmmuseum">Eye Filmmuseum</button><button class="cf-btn active" data-cinema="Filmhallen">Filmhallen</button><button class="cf-btn active" data-cinema="Lab111">Lab111</button><button class="cf-btn active" data-cinema="Rialto VU">Rialto VU</button><button class="cf-btn active" data-cinema="Filmkoepel">Filmkoepel</button><button class="cf-btn active" data-cinema="Filmschuur">Filmschuur</button><span class="filter-sep"></span><button class="cf-btn df-btn" data-date="2026-06-10">W</button><button class="cf-btn df-btn" data-date="2026-06-11">T</button><button class="cf-btn df-btn" data-date="2026-06-12">F</button><button class="cf-btn df-btn" data-date="2026-06-13">S</button><button class="cf-btn df-btn" data-date="2026-06-14">S</button><button class="cf-btn df-btn" data-date="2026-06-15">M</button><button class="cf-btn df-btn" data-date="2026-06-16">T</button><button class="cf-btn df-btn" data-date="2026-06-17">W</button><span class="filter-sep"></span><button class="cf-btn lf-btn" id="lang-filter">All</button></div>
 <div class="grid"><div class="card">
   <div class="thumb"><img src="https://image.tmdb.org/t/p/w300/rhGx6E3qRNMgj3i5su2oukNHwIQ.jpg" alt="" loading="lazy"></div>
   <div class="body">
@@ -742,7 +742,7 @@ h3 a:hover { text-decoration: underline; }
   </div>
 </div></div>
 
-<footer class="meta">Generated 10 Jun 2026, 20:21</footer>
+<footer class="meta">Generated 10 Jun 2026, 20:38</footer>
 <script>
 (function(){
   const cinemaBtns = document.querySelectorAll('.cf-btn[data-cinema]');
@@ -758,7 +758,7 @@ h3 a:hover { text-decoration: underline; }
   }));
   if (langBtn) langBtn.addEventListener('click', function(){
     this.classList.toggle('active');
-    this.textContent = this.classList.contains('active') ? 'English only' : 'All languages';
+    this.textContent = this.classList.contains('active') ? 'EN' : 'All';
     filter();
   });
   function nowAmsterdam() {
