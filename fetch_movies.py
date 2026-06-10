@@ -756,7 +756,14 @@ def _showtimes_html(showtimes: list[dict], links: dict = {}) -> str:
     for (sort_date, date, cinema), times in sorted(groups.items(), key=lambda kv: (kv[0][0], sorted(set(kv[1]))[0])):
         all_times = sorted(set(times))
         times = all_times[-3:]  # cap at 3, keeping the latest
-        times_str = " · ".join(times)
+        times_html = "".join(
+            '<span class="st-time{sep}"{sort}>{t}</span>'.format(
+                sep=" sep" if i > 0 else "",
+                sort=f' data-sort="{sort_date}T{t}"' if sort_date else "",
+                t=t,
+            )
+            for i, t in enumerate(times)
+        )
         date_html = f'<span class="st-date">{date}</span>' if date else ""
         if cinema:
             href = links.get(cinema, "#")
@@ -765,7 +772,7 @@ def _showtimes_html(showtimes: list[dict], links: dict = {}) -> str:
             cinema_html = ""
         cinema_attr = f' data-cinema="{cinema}"' if cinema else ""
         sort_attr = f' data-sort="{sort_date}T{all_times[0]}"' if sort_date and all_times else ""
-        rows.append(f'<div class="st-row"{cinema_attr}{sort_attr}>{date_html}<span class="st-times">{times_str}</span>{cinema_html}</div>')
+        rows.append(f'<div class="st-row"{cinema_attr}{sort_attr}>{date_html}<span class="st-times">{times_html}</span>{cinema_html}</div>')
     return f'<div class="showtimes">{"".join(rows)}</div>'
 
 
@@ -1005,6 +1012,7 @@ h3 a:hover {{ text-decoration: underline; }}
 .st-row {{ display: flex; align-items: baseline; gap: 0; }}
 .st-date {{ color: var(--muted); min-width: 4.5rem; flex-shrink: 0; }}
 .st-times {{ color: var(--text); letter-spacing: 0.02em; }}
+.st-time.sep::before {{ content: ' · '; }}
 .ctag {{
   font-size: 0.67rem; padding: 2px 7px; border-radius: 4px;
   background: #1e3a5f; color: #93c5fd; text-decoration: none; white-space: nowrap;
@@ -1047,12 +1055,28 @@ h3 a:hover {{ text-decoration: underline; }}
     this.textContent = this.classList.contains('active') ? 'English only' : 'All languages';
     filter();
   }});
+  function nowAmsterdam() {{
+    return new Date().toLocaleString('sv-SE', {{timeZone: 'Europe/Amsterdam'}}).replace(' ', 'T').slice(0, 16);
+  }}
   function filter(){{
     const active = new Set([...cinemaBtns].filter(b => b.classList.contains('active')).map(b => b.dataset.cinema));
     const allCinemas = !cinemaBtns.length || active.size === cinemaBtns.length;
     const engOnly = langBtn && langBtn.classList.contains('active');
     document.querySelectorAll('.st-row[data-cinema]').forEach(row => {{
       row.style.display = allCinemas || active.has(row.dataset.cinema) ? '' : 'none';
+    }});
+    const now = nowAmsterdam();
+    document.querySelectorAll('.st-time[data-sort]').forEach(span => {{
+      span.style.display = span.dataset.sort >= now ? '' : 'none';
+    }});
+    document.querySelectorAll('.st-times').forEach(el => {{
+      const visible = [...el.querySelectorAll('.st-time')].filter(s => s.style.display !== 'none');
+      el.querySelectorAll('.st-time').forEach(s => s.classList.remove('sep'));
+      visible.forEach((s, i) => {{ if (i > 0) s.classList.add('sep'); }});
+    }});
+    document.querySelectorAll('.st-row').forEach(row => {{
+      const times = row.querySelectorAll('.st-time[data-sort]');
+      if (times.length && [...times].every(t => t.style.display === 'none')) row.style.display = 'none';
     }});
     document.querySelectorAll('.card').forEach(card => {{
       const rows = card.querySelectorAll('.st-row[data-cinema]');
@@ -1067,9 +1091,9 @@ h3 a:hover {{ text-decoration: underline; }}
       const cards = [...grid.querySelectorAll('.card')];
       cards.sort((a, b) => {{
         const earliest = card => {{
-          const keys = [...card.querySelectorAll('.st-row[data-sort]')]
-            .filter(r => r.style.display !== 'none')
-            .map(r => r.dataset.sort);
+          const keys = [...card.querySelectorAll('.st-time[data-sort]')]
+            .filter(s => s.style.display !== 'none')
+            .map(s => s.dataset.sort);
           return keys.length ? keys.reduce((m, v) => v < m ? v : m) : '9999';
         }};
         return earliest(a).localeCompare(earliest(b));
@@ -1143,6 +1167,21 @@ h3 a:hover {{ text-decoration: underline; }}
     document.body.style.userSelect = '';
     if (dragDx > 80) dismissCard(card); else snapBack(card);
   }});
+  function scheduleNext() {{
+    const now = nowAmsterdam();
+    const upcoming = [...document.querySelectorAll('.st-time[data-sort]')]
+      .map(s => s.dataset.sort)
+      .filter(s => s > now)
+      .sort();
+    if (!upcoming.length) return;
+    const next = upcoming[0];
+    const nowMs  = Date.parse(now  + ':00Z');
+    const nextMs = Date.parse(next + ':00Z');
+    const delay  = Math.max(nextMs - nowMs, 0);
+    setTimeout(function() {{ filter(); scheduleNext(); }}, delay);
+  }}
+  filter();
+  scheduleNext();
 }})();
 </script>
 </body>
