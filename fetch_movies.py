@@ -1046,7 +1046,7 @@ h3 a:hover {{ text-decoration: underline; }}
 .day-group {{ display: flex; align-items: center; gap: 0.5rem; width: 100%; }}
 .df-btn {{ padding: 4px 0; flex: 1; text-align: center; }}
 .df-btn.active {{ background: #0f766e; color: #ccfbf1; border-color: #0f766e; }}
-.lf-btn {{ background: var(--red-bg); color: var(--red); border-color: #7f1d1d; }}
+.lf-btn {{ background: var(--red-bg); color: var(--red); border-color: #7f1d1d; min-width: 2.5rem; text-align: center; }}
 .lf-btn.active {{ background: var(--red-bg); color: var(--red); border-color: #7f1d1d; }}
 </style>
 </head>
