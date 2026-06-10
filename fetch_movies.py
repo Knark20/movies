@@ -941,8 +941,9 @@ def generate_html(movies_by_cinema: dict) -> str:
         )
         for sd in all_dates
     )
-    day_sep  = '<span class="filter-sep"></span>' if all_dates else ""
-    filter_html = f'<div class="cinema-filters">{filter_btns}{day_sep}{day_btns}{lang_btn}</div>' if len(all_cinemas) > 1 else ""
+    lang_inner = '<span class="filter-sep"></span><button class="cf-btn lf-btn" id="lang-filter">All</button>'
+    day_group  = f'<div class="day-group">{day_btns}{lang_inner}</div>' if all_dates else lang_inner
+    filter_html = f'<div class="cinema-filters">{filter_btns}{day_group}</div>' if len(all_cinemas) > 1 else ""
     day_filter_html = ""
 
     now   = datetime.now(ZoneInfo("Europe/Amsterdam")).strftime("%d %b %Y, %H:%M")
@@ -1040,6 +1041,7 @@ h3 a:hover {{ text-decoration: underline; }}
 .cf-btn.active {{ background: #1e3a5f; color: #93c5fd; border-color: #1d4ed8; }}
 @media (hover: hover) {{ .cf-btn:hover {{ border-color: var(--accent); color: var(--text); }} }}
 .filter-sep {{ width: 1px; background: #334155; align-self: stretch; margin: 0 0.25rem; }}
+.day-group {{ display: flex; align-items: center; gap: 0.5rem; }}
 .df-btn {{ padding: 4px 11px; }}
 .df-btn.active {{ background: #0f766e; color: #ccfbf1; border-color: #0f766e; }}
 .lf-btn {{ background: var(--red-bg); color: var(--red); border-color: #7f1d1d; }}
