@@ -929,7 +929,8 @@ def generate_html(movies_by_cinema: dict) -> str:
     _last = {"Filmkoepel", "Filmschuur"}
     all_cinemas = sorted({st["cinema"] for d in merged.values() for st in d["showtimes"] if st.get("cinema")},
                          key=lambda c: (c in _last, c))
-    filter_btns = "".join(f'<button class="cf-btn active" data-cinema="{c}">{c}</button>' for c in all_cinemas)
+    _cinema_label = {"Eye Filmmuseum": "Eye"}
+    filter_btns = "".join(f'<button class="cf-btn active" data-cinema="{c}">{_cinema_label.get(c, c)}</button>' for c in all_cinemas)
     lang_btn    = '<span class="filter-sep"></span><button class="cf-btn lf-btn" id="lang-filter">All</button>'
 
     _day_letters = "MTWTFSS"
@@ -941,9 +942,9 @@ def generate_html(movies_by_cinema: dict) -> str:
         )
         for sd in all_dates
     )
-    lang_inner = '<span class="filter-sep"></span><button class="cf-btn lf-btn" id="lang-filter">All</button>'
-    day_group  = f'<div class="day-group">{day_btns}{lang_inner}</div>' if all_dates else lang_inner
-    filter_html = f'<div class="cinema-filters">{filter_btns}{day_group}</div>' if len(all_cinemas) > 1 else ""
+    lang_inner = '<button class="cf-btn lf-btn" id="lang-filter">All</button><span class="filter-sep"></span>'
+    day_group  = f'<div class="filter-break"></div><div class="day-group">{day_btns}</div>' if all_dates else ""
+    filter_html = f'<div class="cinema-filters">{lang_inner}{filter_btns}{day_group}</div>' if len(all_cinemas) > 1 else ""
     day_filter_html = ""
 
     now   = datetime.now(ZoneInfo("Europe/Amsterdam")).strftime("%d %b %Y, %H:%M")
@@ -1041,8 +1042,9 @@ h3 a:hover {{ text-decoration: underline; }}
 .cf-btn.active {{ background: #1e3a5f; color: #93c5fd; border-color: #1d4ed8; }}
 @media (hover: hover) {{ .cf-btn:hover {{ border-color: var(--accent); color: var(--text); }} }}
 .filter-sep {{ width: 1px; background: #334155; align-self: stretch; margin: 0 0.25rem; }}
-.day-group {{ display: flex; align-items: center; gap: 0.5rem; }}
-.df-btn {{ padding: 4px 11px; }}
+.filter-break {{ width: 100%; }}
+.day-group {{ display: flex; align-items: center; gap: 0.5rem; width: 100%; }}
+.df-btn {{ padding: 4px 0; flex: 1; text-align: center; }}
 .df-btn.active {{ background: #0f766e; color: #ccfbf1; border-color: #0f766e; }}
 .lf-btn {{ background: var(--red-bg); color: var(--red); border-color: #7f1d1d; }}
 .lf-btn.active {{ background: var(--red-bg); color: var(--red); border-color: #7f1d1d; }}
