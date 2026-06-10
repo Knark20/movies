@@ -931,7 +931,19 @@ def generate_html(movies_by_cinema: dict) -> str:
                          key=lambda c: (c in _last, c))
     filter_btns = "".join(f'<button class="cf-btn active" data-cinema="{c}">{c}</button>' for c in all_cinemas)
     lang_btn    = '<span class="filter-sep"></span><button class="cf-btn lf-btn" id="lang-filter">All languages</button>'
-    filter_html = f'<div class="cinema-filters">{filter_btns}{lang_btn}</div>' if len(all_cinemas) > 1 else ""
+
+    _day_letters = "MTWTFSS"
+    all_dates = sorted({st["sort_date"] for d in merged.values() for st in d["showtimes"] if st.get("sort_date")})
+    day_btns  = "".join(
+        '<button class="cf-btn df-btn active" data-date="{sd}">{letter}</button>'.format(
+            sd=sd,
+            letter=_day_letters[datetime.strptime(sd, "%Y-%m-%d").weekday()],
+        )
+        for sd in all_dates
+    )
+    day_sep  = '<span class="filter-sep"></span>' if all_dates else ""
+    filter_html = f'<div class="cinema-filters">{filter_btns}{lang_btn}{day_sep}{day_btns}</div>' if len(all_cinemas) > 1 else ""
+    day_filter_html = ""
 
     now   = datetime.now(ZoneInfo("Europe/Amsterdam")).strftime("%d %b %Y, %H:%M")
     total = len(merged)
@@ -1028,6 +1040,8 @@ h3 a:hover {{ text-decoration: underline; }}
 .cf-btn.active {{ background: #1e3a5f; color: #93c5fd; border-color: #1d4ed8; }}
 @media (hover: hover) {{ .cf-btn:hover {{ border-color: var(--accent); color: var(--text); }} }}
 .filter-sep {{ width: 1px; background: #334155; align-self: stretch; margin: 0 0.25rem; }}
+.df-btn {{ padding: 4px 10px; }}
+.df-btn.active {{ background: #042f2e; color: #5eead4; border-color: #0d9488; }}
 .lf-btn {{ background: var(--red-bg); color: var(--red); border-color: #7f1d1d; }}
 .lf-btn.active {{ background: var(--red-bg); color: var(--red); border-color: #7f1d1d; }}
 </style>
@@ -1045,8 +1059,13 @@ h3 a:hover {{ text-decoration: underline; }}
 <script>
 (function(){{
   const cinemaBtns = document.querySelectorAll('.cf-btn[data-cinema]');
+  const dateBtns   = document.querySelectorAll('.df-btn[data-date]');
   const langBtn    = document.getElementById('lang-filter');
   cinemaBtns.forEach(btn => btn.addEventListener('click', function(){{
+    this.classList.toggle('active');
+    filter();
+  }}));
+  dateBtns.forEach(btn => btn.addEventListener('click', function(){{
     this.classList.toggle('active');
     filter();
   }}));
@@ -1061,9 +1080,13 @@ h3 a:hover {{ text-decoration: underline; }}
   function filter(){{
     const active = new Set([...cinemaBtns].filter(b => b.classList.contains('active')).map(b => b.dataset.cinema));
     const allCinemas = !cinemaBtns.length || active.size === cinemaBtns.length;
+    const activeDates = new Set([...dateBtns].filter(b => b.classList.contains('active')).map(b => b.dataset.date));
+    const allDates = !dateBtns.length || activeDates.size === dateBtns.length;
     const engOnly = langBtn && langBtn.classList.contains('active');
-    document.querySelectorAll('.st-row[data-cinema]').forEach(row => {{
-      row.style.display = allCinemas || active.has(row.dataset.cinema) ? '' : 'none';
+    document.querySelectorAll('.st-row').forEach(row => {{
+      const cOk = !row.dataset.cinema || allCinemas || active.has(row.dataset.cinema);
+      const dOk = !row.dataset.sort   || allDates   || activeDates.has(row.dataset.sort.slice(0, 10));
+      row.style.display = cOk && dOk ? '' : 'none';
     }});
     const now = nowAmsterdam();
     document.querySelectorAll('.st-time[data-sort]').forEach(span => {{
