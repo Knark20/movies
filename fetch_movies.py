@@ -754,7 +754,8 @@ def _showtimes_html(showtimes: list[dict], links: dict = {}) -> str:
         groups.setdefault(key, []).append(st["time"])
     rows = []
     for (sort_date, date, cinema), times in sorted(groups.items(), key=lambda kv: (kv[0][0], sorted(set(kv[1]))[0])):
-        times = sorted(set(times))[-3:]  # cap at 3, keeping the latest
+        all_times = sorted(set(times))
+        times = all_times[-3:]  # cap at 3, keeping the latest
         times_str = " · ".join(times)
         date_html = f'<span class="st-date">{date}</span>' if date else ""
         if cinema:
@@ -763,7 +764,8 @@ def _showtimes_html(showtimes: list[dict], links: dict = {}) -> str:
         else:
             cinema_html = ""
         cinema_attr = f' data-cinema="{cinema}"' if cinema else ""
-        rows.append(f'<div class="st-row"{cinema_attr}>{date_html}<span class="st-times">{times_str}</span>{cinema_html}</div>')
+        sort_attr = f' data-sort="{sort_date}T{all_times[0]}"' if sort_date and all_times else ""
+        rows.append(f'<div class="st-row"{cinema_attr}{sort_attr}>{date_html}<span class="st-times">{times_str}</span>{cinema_html}</div>')
     return f'<div class="showtimes">{"".join(rows)}</div>'
 
 
@@ -1061,11 +1063,21 @@ h3 a:hover {{ text-decoration: underline; }}
       const langOk   = !engOnly || hasSubs || enOnly;
       card.style.display = cinemaOk && langOk && !card.classList.contains('dismissed') ? '' : 'none';
     }});
-    const grid = document.querySelector('.grid');
-    if (grid) {{
-      const visible = [...grid.querySelectorAll('.card')].filter(c => c.style.display !== 'none').length;
+    document.querySelectorAll('.grid').forEach(grid => {{
+      const cards = [...grid.querySelectorAll('.card')];
+      cards.sort((a, b) => {{
+        const earliest = card => {{
+          const keys = [...card.querySelectorAll('.st-row[data-sort]')]
+            .filter(r => r.style.display !== 'none')
+            .map(r => r.dataset.sort);
+          return keys.length ? keys.reduce((m, v) => v < m ? v : m) : '9999';
+        }};
+        return earliest(a).localeCompare(earliest(b));
+      }});
+      cards.forEach(c => grid.appendChild(c));
+      const visible = cards.filter(c => c.style.display !== 'none').length;
       document.querySelectorAll('.film-count').forEach(el => el.textContent = visible);
-    }}
+    }});
   }}
   // Swipe / drag right to dismiss
   function dismissCard(card) {{
