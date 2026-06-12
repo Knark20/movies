@@ -1119,7 +1119,7 @@ h3 a:hover {{ text-decoration: underline; }}
       cards.sort((a, b) => {{
         const earliest = card => {{
           const keys = [...card.querySelectorAll('.st-time[data-sort]')]
-            .filter(s => s.style.display !== 'none')
+            .filter(s => s.style.display !== 'none' && s.closest('.st-row').style.display !== 'none')
             .map(s => s.dataset.sort);
           return keys.length ? keys.reduce((m, v) => v < m ? v : m) : '9999';
         }};
@@ -1204,7 +1204,7 @@ h3 a:hover {{ text-decoration: underline; }}
     const next = upcoming[0];
     const nowMs  = Date.parse(now  + ':00Z');
     const nextMs = Date.parse(next + ':00Z');
-    const delay  = Math.max(nextMs - nowMs, 0);
+    const delay  = Math.max(nextMs - nowMs + 60000, 0);
     setTimeout(function() {{ filter(); scheduleNext(); }}, delay);
   }}
   filter();
