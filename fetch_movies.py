@@ -1105,6 +1105,19 @@ h3 a:hover {{ text-decoration: underline; }}
       const times = row.querySelectorAll('.st-time[data-sort]');
       if (times.length && [...times].every(t => t.style.display === 'none')) row.style.display = 'none';
     }});
+    document.querySelectorAll('.showtimes').forEach(st => {{
+      const rows = [...st.querySelectorAll('.st-row')];
+      rows.sort((a, b) => {{
+        const earliest = row => {{
+          const keys = [...row.querySelectorAll('.st-time[data-sort]')]
+            .filter(s => s.style.display !== 'none')
+            .map(s => s.dataset.sort);
+          return keys.length ? keys.reduce((m, v) => v < m ? v : m) : '9999';
+        }};
+        return earliest(a).localeCompare(earliest(b));
+      }});
+      rows.forEach(r => st.appendChild(r));
+    }});
     document.querySelectorAll('.card').forEach(card => {{
       const rows = card.querySelectorAll('.st-row[data-cinema]');
       const cinemaOk = !rows.length || [...rows].some(r => r.style.display !== 'none');
