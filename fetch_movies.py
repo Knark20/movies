@@ -130,7 +130,7 @@ _COUNTRY_LANG: dict[str, str] = {
     "austria": "DE", "switzerland": "DE", "italy": "IT", "spain": "ES",
     "mexico": "ES", "argentina": "ES", "colombia": "ES", "chile": "ES",
     "portugal": "PT", "brazil": "PT", "russia": "RU", "japan": "JA",
-    "china": "ZH", "taiwan": "ZH", "hong kong": "ZH", "south korea": "KO",
+    "china": "ZH", "taiwan": "TW", "hong kong": "ZH", "south korea": "KO",
     "korea": "KO", "sweden": "SV", "norway": "NO", "denmark": "DA",
     "finland": "FI", "poland": "PL", "turkey": "TR", "israel": "HE",
     "iran": "FA", "india": "HI", "greece": "EL", "czech republic": "CS",
@@ -837,6 +837,11 @@ def _card(title: str, r: dict, links: dict, showtimes: list[dict] = None, lang_t
             if code and code not in seen:
                 seen.add(code)
                 codes.append(code)
+    # Taiwan productions speak Mandarin (ZH) but deserve their own tag
+    country_lower = (r.get("country") or "").lower()
+    if "ZH" in codes and "taiwan" in country_lower and "china" not in country_lower:
+        codes = ["TW" if c == "ZH" else c for c in codes]
+        seen = set(codes)
     if codes:
         attr = ' data-en="1"' if "EN" in codes else ""
         badges_html += f'<span class="badge ltag"{attr}>{" · ".join(codes)}</span>'
