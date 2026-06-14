@@ -591,6 +591,7 @@ def scrape_schuur() -> list[dict]:
 
 
 _EYE_GRAPHQL_URL = "https://service.eyefilm.nl/graphql"
+_EYE_SUBS_RE = re.compile(r'>Subtitles</h2><p[^>]*>([^<]+)</p>')
 _EYE_GRAPHQL_QUERY = (
     "query shows($site:String!,$startDateTime:String,$limit:Int,$sort:ShowSortEnum)"
     "{items:show(site:$site,startDateTime:$startDateTime,limit:$limit,sort:$sort)"
@@ -639,8 +640,18 @@ def scrape_eye() -> list[dict]:
             "sort_date": dt.strftime("%Y-%m-%d"),
         })
 
-    return [{"title": t, "link": d["link"], "showtimes": d["showtimes"]}
-            for t, d in films_map.items()]
+    films = []
+    for t, d in films_map.items():
+        film: dict = {"title": t, "link": d["link"], "showtimes": d["showtimes"]}
+        try:
+            page = SESSION.get(d["link"], timeout=10)
+            m = _EYE_SUBS_RE.search(page.text)
+            if m and "eng" in m.group(1).lower():
+                film["lang_tag"] = "eng subs"
+        except Exception:
+            pass
+        films.append(film)
+    return films
 
 
 def scrape_lab111() -> list[dict]:
