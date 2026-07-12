@@ -40,7 +40,7 @@ Rialto VU films moved to the VU's Griffioen venue. The old `rialtofilm.nl/feed/n
 
 Griffioen's stack is scrapable without a browser:
 1. `GET griffioen.vu.nl/shows.php?genres=&dates=&type=film` returns JSON whose `html` field is a rendered fragment of one card per film. Each card carries `data-showid`, a `<strong>` title, and an `onclick="document.location='/film/{slug}/…'"` giving the film slug.
-2. `GET griffioen.vu.nl/film/{slug}` (plain HTML) embeds **all** of that film's screenings as `/film/{slug}/DD-MM-YYYY-HH-MM` links — already in Amsterdam local time. Filtered to the next 7 days; `00-00` stamps are placeholder "date TBA" entries and are skipped.
+2. `GET griffioen.vu.nl/film/{slug}` (plain HTML) embeds **all** of that film's screenings as `/film/{slug}/DD-MM-YYYY-HH-MM` links — already in Amsterdam local time. Filtered to the next 7 days; `00-00` stamps are placeholder "date TBA" entries and are skipped. The page also carries a `<strong>Subtitles</strong> English<br />` field when the film is subtitled; films whose subtitle language is English get `lang_tag = "eng subs"` (same badge as the Cineville cinemas).
 
 `_RIALTO_VU_BASE` is the Griffioen base URL (top of `fetch_movies.py`).
 
@@ -48,7 +48,7 @@ Griffioen's stack is scrapable without a browser:
 
 `depijp.rialtofilm.nl` is a Nuxt SSR site with an Umbraco/cre8ion backend and no reachable JSON API (the `/prod/*` paths all 404). The agenda page only server-renders *today*, so the scraper works off film pages instead:
 1. `GET depijp.rialtofilm.nl/nl/films` server-renders every current film as a `/nl/films/{slug}` link.
-2. `GET depijp.rialtofilm.nl/nl/films/{slug}` embeds all screenings as adjacent `program-time` (HH:MM) / `program-date` (Dutch full date, e.g. "zondag 12 juli") spans. Dates are parsed by `_parse_nl_date` — which now also accepts full Dutch day/month names — and filtered to the next 7 days.
+2. `GET depijp.rialtofilm.nl/nl/films/{slug}` embeds all screenings as adjacent `program-time` (HH:MM) / `program-date` (Dutch full date, e.g. "zondag 12 juli") spans. Dates are parsed by `_parse_nl_date` — which now also accepts full Dutch day/month names — and filtered to the next 7 days. Subtitles are **per-screening**: each program-card has a `program-labels` div reading `Eng subs` when that particular showing is English-subtitled (empty, or other labels like `Met Q&A`, otherwise). Showtimes are grouped by subtitle tag, so a film with only some subtitled screenings yields two entries — one plain, one `eng subs` (same convention as the Cineville cinemas, keyed on `(title, lang_tag)` in the merge).
 
 `_RIALTO_DEPIJP_BASE` is the base URL (top of `fetch_movies.py`). Pages are decoded as UTF-8 and titles HTML-unescaped (they contain `&#39;` and en-dashes).
 

@@ -748,6 +748,10 @@ def scrape_rialto_vu() -> list[dict]:
         except Exception:
             continue
 
+        # Detail page lists subtitles as "<strong>Subtitles</strong> English<br />" when present
+        sub_m = re.search(r"<strong>Subtitles</strong>([^<]*)<", fr.text)
+        lang_tag = "eng subs" if sub_m and "english" in sub_m.group(1).lower() else ""
+
         showtimes: list[dict] = []
         for stamp in sorted(set(re.findall(
                 rf"/film/{re.escape(slug)}/(\d{{2}}-\d{{2}}-\d{{4}}-\d{{2}}-\d{{2}})", fr.text))):
@@ -766,11 +770,14 @@ def scrape_rialto_vu() -> list[dict]:
             })
 
         if showtimes:
-            films.append({
+            film: dict = {
                 "title":     title,
                 "link":      f"{_RIALTO_VU_BASE}/film/{slug}",
                 "showtimes": showtimes,
-            })
+            }
+            if lang_tag:
+                film["lang_tag"] = lang_tag
+            films.append(film)
     return films
 
 
@@ -804,12 +811,16 @@ def scrape_rialto_depijp() -> list[dict]:
         if not title:
             continue
 
-        showtimes: list[dict] = []
+        # Subtitles are per-screening: each program-card carries a program-labels div
+        # that reads "Eng subs" when that particular showing is English-subtitled (and is
+        # empty, or holds other labels like "Met Q&A", otherwise). Group showtimes by tag.
+        showtimes_by_tag: dict[str, list[dict]] = {}
         seen: set[tuple] = set()
         for m in re.finditer(
                 r'program-time[^>]*>\s*(\d{1,2}:\d{2})\s*</span>\s*'
-                r'<span class="program-date[^>]*>\s*([^<]+?)\s*</span>',
-                page, re.I):
+                r'<span class="program-date[^>]*>\s*([^<]+?)\s*</span>'
+                r'.*?program-labels[^>]*>(.*?)</div>',
+                page, re.I | re.S):
             time_s = m.group(1)
             en_date, sort_date = _parse_nl_date(m.group(2))
             if not sort_date:
@@ -817,18 +828,26 @@ def scrape_rialto_depijp() -> list[dict]:
             d = datetime.strptime(sort_date, "%Y-%m-%d").date()
             if not (today <= d <= cutoff):
                 continue
-            key = (sort_date, time_s)
+            labels = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", m.group(3))).strip().lower()
+            lang_tag = "eng subs" if ("eng subs" in labels or "english" in labels) else ""
+            key = (sort_date, time_s, lang_tag)
             if key in seen:
                 continue
             seen.add(key)
-            showtimes.append({"date": en_date, "time": time_s, "sort_date": sort_date})
+            showtimes_by_tag.setdefault(lang_tag, []).append(
+                {"date": en_date, "time": time_s, "sort_date": sort_date})
 
-        if showtimes:
-            films.append({
+        for lang_tag, showtimes in showtimes_by_tag.items():
+            if not showtimes:
+                continue
+            film: dict = {
                 "title":     title,
                 "link":      f"{_RIALTO_DEPIJP_BASE}/nl/films/{slug}",
                 "showtimes": showtimes,
-            })
+            }
+            if lang_tag:
+                film["lang_tag"] = lang_tag
+            films.append(film)
     return films
 
 
