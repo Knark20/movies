@@ -1059,7 +1059,7 @@ def generate_html(movies_by_cinema: dict) -> str:
     _last = {"Filmkoepel", "Filmschuur"}
     all_cinemas = sorted({st["cinema"] for d in merged.values() for st in d["showtimes"] if st.get("cinema")},
                          key=lambda c: (c in _last, c))
-    _cinema_label = {"Eye Filmmuseum": "Eye"}
+    _cinema_label = {"Eye Filmmuseum": "Eye", "Rialto VU": "VU", "Rialto De Pijp": "Pijp"}
     filter_btns = "".join(f'<button class="cf-btn active" data-cinema="{c}">{_cinema_label.get(c, c)}</button>' for c in all_cinemas)
     lang_btn    = '<span class="filter-sep"></span><button class="cf-btn lf-btn" id="lang-filter">All</button>'
 
