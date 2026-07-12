@@ -1,6 +1,6 @@
 # Cinema Movie Aggregator
 
-Personal tool that scrapes currently showing films from 5 cinemas in Haarlem/Amsterdam, filters by rating, and outputs a dark-themed HTML page with showtimes.
+Personal tool that scrapes currently showing films from 6 cinemas in Haarlem/Amsterdam, filters by rating, and outputs a dark-themed HTML page with showtimes.
 
 **GitHub:** https://github.com/Knark20/movies
 
@@ -31,6 +31,17 @@ Free OMDb API key: https://www.omdbapi.com/apikey.aspx
 | Eye Filmmuseum Amsterdam | eyefilm.nl/en/whats-on | GraphQL API at `service.eyefilm.nl/graphql` — returns all individual screenings with dates/times; filters to `productionType="1"` (films only, excludes events/talks/closures) |
 | Filmhallen Amsterdam | filmhallen.nl | Via Cineville API — see below |
 | Lab111 Amsterdam | lab111.nl/programma/ | **Cineville API** for showtimes + subtitle detection; programma page HTML also scraped to resolve `/movie/{slug}/` links (Cineville slugs differ from Lab111's own slug format). Film blocks: `div.col-md-8` → `h2.hidemobile` title + `a[href*=/movie/]` link. |
+| Rialto VU Amsterdam | griffioen.vu.nl/film | Rialto VU's film programme now runs at the VU's **Griffioen** venue — see below. |
+
+## Rialto VU / Griffioen
+
+Rialto VU films moved to the VU's Griffioen venue. The old `rialtofilm.nl/feed/nl/program/7/28` JSON feed is dead (404 — `rialtofilm.nl` is now the separate De Pijp location on a Nuxt/Umbraco stack with no reachable JSON API).
+
+Griffioen's stack is scrapable without a browser:
+1. `GET griffioen.vu.nl/shows.php?genres=&dates=&type=film` returns JSON whose `html` field is a rendered fragment of one card per film. Each card carries `data-showid`, a `<strong>` title, and an `onclick="document.location='/film/{slug}/…'"` giving the film slug.
+2. `GET griffioen.vu.nl/film/{slug}` (plain HTML) embeds **all** of that film's screenings as `/film/{slug}/DD-MM-YYYY-HH-MM` links — already in Amsterdam local time. Filtered to the next 7 days; `00-00` stamps are placeholder "date TBA" entries and are skipped.
+
+`_RIALTO_VU_BASE` is the Griffioen base URL (top of `fetch_movies.py`).
 
 ## Cineville API (Filmhallen + Filmkoepel)
 

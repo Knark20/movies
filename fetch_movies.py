@@ -34,6 +34,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 import re
+import html as _html
 import urllib3
 import requests
 from bs4 import BeautifulSoup
@@ -458,7 +459,7 @@ _CINEVILLE_API        = "https://api.cineville.nl"
 _FILMHALLEN_VENUE_ID  = "500f04ec-a10e-4f92-a8e6-d7f98b3b2d51"
 _FILMKOEPEL_VENUE_ID  = "f030b2cb-60d6-45ae-b1e0-719ed1c104f1"
 _LAB111_VENUE_ID      = "3c7714e3-515b-4e1a-9ae5-dfb5bf73d575"
-_RIALTO_VU_API        = "https://rialtofilm.nl/feed/nl/program/7/28"
+_RIALTO_VU_BASE       = "https://griffioen.vu.nl"  # Rialto VU films now run at the VU's Griffioen venue
 
 
 def _scrape_cineville_venue(venue_id: str, films_base_url: str) -> list[dict]:
@@ -699,42 +700,70 @@ def scrape_filmhallen() -> list[dict]:
 
 def scrape_rialto_vu() -> list[dict]:
     """
-    Rialto VU Amsterdam — rialtofilm.nl/feed/nl/program/7/28 JSON API.
-    Returns 28 days of screenings; filtered to next 7 days.
-    Dates and times are already in Amsterdam local time.
+    Rialto VU Amsterdam — films now run at the VU's Griffioen venue (griffioen.vu.nl).
+
+    The old rialtofilm.nl JSON feed is gone (that domain is now the De Pijp venue).
+    Griffioen loads its film list via `shows.php?type=film`, which returns a rendered
+    HTML fragment of one card per film. Each film's detail page (`/film/{slug}`) embeds
+    all of its screenings as `/film/{slug}/DD-MM-YYYY-HH-MM` links, already in local time.
     """
-    resp = SESSION.get(_RIALTO_VU_API, timeout=15)
+    resp = SESSION.get(
+        f"{_RIALTO_VU_BASE}/shows.php",
+        params={"genres": "", "dates": "", "type": "film"},
+        timeout=15,
+    )
     resp.raise_for_status()
-    days = resp.json()
+    listing = resp.json().get("html", "")
 
-    today   = datetime.now().strftime("%Y-%m-%d")
-    cutoff  = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
+    # One card per film: data-showid=".." onclick="document.location='/film/{slug}/..'" ... <strong>Title</strong>
+    cards = re.findall(
+        r"onclick=\"document\.location='/film/([a-z0-9\-]+)/[^']*'\".*?<strong>(.*?)</strong>",
+        listing, re.S,
+    )
 
-    films_map: dict[int, dict] = {}
-    for day in days:
-        date_str = day.get("date", "")
-        if not date_str or date_str < today or date_str > cutoff:
+    today  = datetime.now().date()
+    cutoff = today + timedelta(days=7)
+
+    films: list[dict] = []
+    seen_slugs: set[str] = set()
+    for slug, title in cards:
+        if slug in seen_slugs:
             continue
-        for prog in day.get("programs", []):
-            film_id  = prog.get("film_id")
-            title    = prog.get("title", "").strip()
-            link     = prog.get("film_url", "")
-            time_str = prog.get("starts_at", "")
-            if not film_id or not title or not time_str:
-                continue
+        seen_slugs.add(slug)
+        title = _html.unescape(re.sub(r"\s+", " ", title)).strip()
+        if not title:
+            continue
+
+        try:
+            fr = SESSION.get(f"{_RIALTO_VU_BASE}/film/{slug}", timeout=15)
+            fr.raise_for_status()
+        except Exception:
+            continue
+
+        showtimes: list[dict] = []
+        for stamp in sorted(set(re.findall(
+                rf"/film/{re.escape(slug)}/(\d{{2}}-\d{{2}}-\d{{4}}-\d{{2}}-\d{{2}})", fr.text))):
             try:
-                dt = datetime.strptime(date_str, "%Y-%m-%d")
-                date_disp = f"{dt.strftime('%a')} {dt.day} {dt.strftime('%b')}"
+                dt = datetime.strptime(stamp, "%d-%m-%Y-%H-%M")
             except ValueError:
                 continue
-            if film_id not in films_map:
-                films_map[film_id] = {"title": title, "link": link, "showtimes": []}
-            films_map[film_id]["showtimes"].append({
-                "date":      date_disp,
-                "time":      time_str,
-                "sort_date": date_str,
+            if dt.hour == 0 and dt.minute == 0:      # 00:00 = placeholder date, not a real screening
+                continue
+            if not (today <= dt.date() <= cutoff):
+                continue
+            showtimes.append({
+                "date":      f"{dt.strftime('%a')} {dt.day} {dt.strftime('%b')}",
+                "time":      dt.strftime("%H:%M"),
+                "sort_date": dt.strftime("%Y-%m-%d"),
             })
-    return list(films_map.values())
+
+        if showtimes:
+            films.append({
+                "title":     title,
+                "link":      f"{_RIALTO_VU_BASE}/film/{slug}",
+                "showtimes": showtimes,
+            })
+    return films
 
 
 # ── Filter ─────────────────────────────────────────────────────────────────────
