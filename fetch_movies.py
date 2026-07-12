@@ -432,10 +432,17 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
 _NL_DAY_TO_EN = {
     "zo": "Sun", "ma": "Mon", "di": "Tue", "wo": "Wed",
     "do": "Thu", "vr": "Fri", "za": "Sat",
+    # full names (Rialto De Pijp writes e.g. "zondag 12 juli")
+    "zondag": "Sun", "maandag": "Mon", "dinsdag": "Tue", "woensdag": "Wed",
+    "donderdag": "Thu", "vrijdag": "Fri", "zaterdag": "Sat",
 }
 _MON_NL_MAP = {
     "jan": 1, "feb": 2, "mrt": 3, "apr": 4, "mei": 5, "jun": 6,
     "jul": 7, "aug": 8, "sep": 9, "okt": 10, "nov": 11, "dec": 12,
+    # full names
+    "januari": 1, "februari": 2, "maart": 3, "april": 4, "juni": 6,
+    "juli": 7, "augustus": 8, "september": 9, "oktober": 10,
+    "november": 11, "december": 12,
 }
 
 def _parse_nl_date(date_str: str) -> tuple[str, str]:
@@ -460,6 +467,7 @@ _FILMHALLEN_VENUE_ID  = "500f04ec-a10e-4f92-a8e6-d7f98b3b2d51"
 _FILMKOEPEL_VENUE_ID  = "f030b2cb-60d6-45ae-b1e0-719ed1c104f1"
 _LAB111_VENUE_ID      = "3c7714e3-515b-4e1a-9ae5-dfb5bf73d575"
 _RIALTO_VU_BASE       = "https://griffioen.vu.nl"  # Rialto VU films now run at the VU's Griffioen venue
+_RIALTO_DEPIJP_BASE   = "https://depijp.rialtofilm.nl"
 
 
 def _scrape_cineville_venue(venue_id: str, films_base_url: str) -> list[dict]:
@@ -761,6 +769,64 @@ def scrape_rialto_vu() -> list[dict]:
             films.append({
                 "title":     title,
                 "link":      f"{_RIALTO_VU_BASE}/film/{slug}",
+                "showtimes": showtimes,
+            })
+    return films
+
+
+def scrape_rialto_depijp() -> list[dict]:
+    """
+    Rialto De Pijp Amsterdam — depijp.rialtofilm.nl (Nuxt SSR, no public JSON API).
+
+    The `/nl/films` index server-renders every current film as a `/nl/films/{slug}`
+    link. Each film page embeds all its screenings as adjacent
+    `program-time` / `program-date` (Dutch, e.g. "zondag 12 juli") spans; the date is
+    parsed via _parse_nl_date and filtered to the next 7 days.
+    """
+    idx = SESSION.get(f"{_RIALTO_DEPIJP_BASE}/nl/films", timeout=15)
+    idx.raise_for_status()
+    slugs = sorted(set(re.findall(r'href="(?:/nl)?/films/([a-z0-9\-]+)"', idx.text)))
+
+    today  = datetime.now().date()
+    cutoff = today + timedelta(days=7)
+
+    films: list[dict] = []
+    for slug in slugs:
+        try:
+            fr = SESSION.get(f"{_RIALTO_DEPIJP_BASE}/nl/films/{slug}", timeout=15)
+            fr.raise_for_status()
+        except Exception:
+            continue
+        page = fr.content.decode("utf-8", "replace")
+
+        mt = re.search(r"<h1[^>]*>(.*?)</h1>", page, re.S)
+        title = _html.unescape(re.sub(r"<[^>]+>", "", mt.group(1))).strip() if mt else slug
+        if not title:
+            continue
+
+        showtimes: list[dict] = []
+        seen: set[tuple] = set()
+        for m in re.finditer(
+                r'program-time[^>]*>\s*(\d{1,2}:\d{2})\s*</span>\s*'
+                r'<span class="program-date[^>]*>\s*([^<]+?)\s*</span>',
+                page, re.I):
+            time_s = m.group(1)
+            en_date, sort_date = _parse_nl_date(m.group(2))
+            if not sort_date:
+                continue
+            d = datetime.strptime(sort_date, "%Y-%m-%d").date()
+            if not (today <= d <= cutoff):
+                continue
+            key = (sort_date, time_s)
+            if key in seen:
+                continue
+            seen.add(key)
+            showtimes.append({"date": en_date, "time": time_s, "sort_date": sort_date})
+
+        if showtimes:
+            films.append({
+                "title":     title,
+                "link":      f"{_RIALTO_DEPIJP_BASE}/nl/films/{slug}",
                 "showtimes": showtimes,
             })
     return films
@@ -1282,6 +1348,7 @@ CINEMAS: dict = {
     "Filmhallen Amsterdam":     scrape_filmhallen,
     "Lab111 Amsterdam":         scrape_lab111,
     "Rialto VU Amsterdam":      scrape_rialto_vu,
+    "Rialto De Pijp Amsterdam": scrape_rialto_depijp,
 }
 
 CINEMA_SHORT: dict[str, str] = {
@@ -1291,6 +1358,7 @@ CINEMA_SHORT: dict[str, str] = {
     "Filmhallen Amsterdam":     "Filmhallen",
     "Lab111 Amsterdam":         "Lab111",
     "Rialto VU Amsterdam":      "Rialto VU",
+    "Rialto De Pijp Amsterdam": "Rialto De Pijp",
 }
 
 

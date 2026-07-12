@@ -1,6 +1,6 @@
 # Cinema Movie Aggregator
 
-Personal tool that scrapes currently showing films from 6 cinemas in Haarlem/Amsterdam, filters by rating, and outputs a dark-themed HTML page with showtimes.
+Personal tool that scrapes currently showing films from 7 cinemas in Haarlem/Amsterdam, filters by rating, and outputs a dark-themed HTML page with showtimes.
 
 **GitHub:** https://github.com/Knark20/movies
 
@@ -32,6 +32,7 @@ Free OMDb API key: https://www.omdbapi.com/apikey.aspx
 | Filmhallen Amsterdam | filmhallen.nl | Via Cineville API — see below |
 | Lab111 Amsterdam | lab111.nl/programma/ | **Cineville API** for showtimes + subtitle detection; programma page HTML also scraped to resolve `/movie/{slug}/` links (Cineville slugs differ from Lab111's own slug format). Film blocks: `div.col-md-8` → `h2.hidemobile` title + `a[href*=/movie/]` link. |
 | Rialto VU Amsterdam | griffioen.vu.nl/film | Rialto VU's film programme now runs at the VU's **Griffioen** venue — see below. |
+| Rialto De Pijp Amsterdam | depijp.rialtofilm.nl | Nuxt SSR site, no public JSON API — see below. |
 
 ## Rialto VU / Griffioen
 
@@ -42,6 +43,14 @@ Griffioen's stack is scrapable without a browser:
 2. `GET griffioen.vu.nl/film/{slug}` (plain HTML) embeds **all** of that film's screenings as `/film/{slug}/DD-MM-YYYY-HH-MM` links — already in Amsterdam local time. Filtered to the next 7 days; `00-00` stamps are placeholder "date TBA" entries and are skipped.
 
 `_RIALTO_VU_BASE` is the Griffioen base URL (top of `fetch_movies.py`).
+
+## Rialto De Pijp
+
+`depijp.rialtofilm.nl` is a Nuxt SSR site with an Umbraco/cre8ion backend and no reachable JSON API (the `/prod/*` paths all 404). The agenda page only server-renders *today*, so the scraper works off film pages instead:
+1. `GET depijp.rialtofilm.nl/nl/films` server-renders every current film as a `/nl/films/{slug}` link.
+2. `GET depijp.rialtofilm.nl/nl/films/{slug}` embeds all screenings as adjacent `program-time` (HH:MM) / `program-date` (Dutch full date, e.g. "zondag 12 juli") spans. Dates are parsed by `_parse_nl_date` — which now also accepts full Dutch day/month names — and filtered to the next 7 days.
+
+`_RIALTO_DEPIJP_BASE` is the base URL (top of `fetch_movies.py`). Pages are decoded as UTF-8 and titles HTML-unescaped (they contain `&#39;` and en-dashes).
 
 ## Cineville API (Filmhallen + Filmkoepel)
 
