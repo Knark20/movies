@@ -325,7 +325,7 @@ def get_ratings(title: str, year: Optional[str] = None, cache: Optional[dict] = 
         # (rate limit, network blip) would otherwise block the film forever.
         if cached.get("found") and "country" in cached and "language" in cached:
             # Backfill fields that were added after this entry was cached
-            stale_poster    = cached.get("poster", "").startswith("https://m.media-amazon.com")
+            stale_poster    = (cached.get("poster") or "").startswith("https://m.media-amazon.com")
             needs_orig      = TMDB_TOKEN and not _is_english_only(cached.get("country", "")) and "original_title" not in cached
             needs_tmdb_lang = TMDB_TOKEN and cached.get("language") in (None, "N/A", "") and cached.get("country") in (None, "N/A", "") and "tmdb_language" not in cached
             needs_plot      = TMDB_TOKEN and cached.get("plot") in (None, "", "N/A")
